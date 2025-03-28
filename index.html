@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo Multiplayer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="login-screen">
+        <h1>Digite seu nome</h1>
+        <input type="text" id="username" placeholder="Seu nome">
+        <button onclick="enterGame()">Entrar</button>
+    </div>
+    <div id="game-screen" style="display: none;">
+        <h1>Jogadores Online</h1>
+        <ul id="player-list"></ul>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="client.js"></script>
+</body>
+</html>
