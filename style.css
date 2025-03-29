@@ -147,6 +147,7 @@ button:hover {
     margin-bottom: 0;
     flex-grow: 1;
     margin-right: 0;
+    width: 100%;
 }
 #chat-send {
     padding: 7px 10px;
