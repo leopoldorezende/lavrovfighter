@@ -7,27 +7,50 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
 <body>
     <div id="login-screen">
-        <h1>Digite seu nome</h1>
+        <h2>Quem você pensa que é?</h2>
         <input type="text" id="username" placeholder="Seu nome">
-        <button onclick="enterGame()">Entrar</button>
+        <button id="enterButton">Entrar</button>
     </div>
     <div id="game-screen">
         <div id="map"></div>
 
         <button id="hamburger">&#9776;</button>
 
+        <!-- <button id="fab-message">
+            <span class="material-icons">chat</span>
+          </button> -->
+
+
         <div id="sidebar">
-            <h2>Jogadores Online</h2>
-            <ul id="player-list"></ul>
-            <div id="chat-container">
-                <div id="chat-messages"></div>
-                <div class="chat-sendgroup">
-                    <input type="text" id="chat-input" placeholder="Digite sua mensagem">
-                    <button id="chat-send">Send</button>
+            <div class="tabs">
+                <div class="tab active" data-target="chat">
+                  <span class="material-icons">chat</span>
                 </div>
+                <div class="tab" data-target="info">
+                  <span class="material-icons">info</span>
+                </div>
+            </div>
+              
+            <div id="chat" class="tab-content active">
+                <h2>Jogadores Online</h2>
+                <div class="chat-section">
+                    <ul id="player-list"></ul>
+                    <div id="chat-container">
+                        <div id="chat-messages"></div>
+                        <div class="chat-sendgroup">
+                            <input type="text" id="chat-input" placeholder="Digite sua mensagem">
+                            <button id="chat-send">Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="info" class="tab-content">
+                Lorem Ipsum
             </div>
         </div>
     </div>
@@ -36,15 +59,40 @@
         const sidebar = document.getElementById('sidebar');
         const hamburger = document.getElementById('hamburger');
 
+        const tabs = document.querySelectorAll('.tab');
+        const contents = document.querySelectorAll('.tab-content');
+
+
         hamburger.addEventListener('click', () => {
-        sidebar.classList.toggle('active');
+            sidebar.classList.toggle('active');
+        });
+        
+        document.addEventListener('click', (event) => {
+            if (!sidebar.contains(event.target) && !hamburger.contains(event.target)) {
+                sidebar.classList.remove('active');
+            }
         });
 
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                
+                const target = tab.getAttribute('data-target');
+
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                contents.forEach(c => {
+                    c.classList.remove('active');
+                    if(c.id === target) c.classList.add('active');
+                });
+            });
+        });
+        
         // Reseta a sidebar quando a tela for maior que 1100px
         window.addEventListener('resize', () => {
-        if (window.innerWidth > 1100) {
-            sidebar.classList.remove('active');
-        }
+            if (window.innerWidth > 1200) {
+                sidebar.classList.remove('active');
+            }
         });
     </script>
 

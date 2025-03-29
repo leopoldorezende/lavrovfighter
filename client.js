@@ -5,6 +5,16 @@ const state = {
   players: []
 };
 
+const enterButton = document.getElementById('enterButton');
+const usernameInput = document.getElementById('username');
+
+enterButton.onclick = enterGame;
+usernameInput.onkeyup = (e) => {
+    if (e.key === 'Enter') {
+        enterGame();
+    }
+  };
+
 function enterGame() {
   const username = document.getElementById('username').value.trim();
   if (username) {
@@ -73,7 +83,7 @@ function setupChat(username) {
   }
 
   chatSend.onclick = sendMessage;
-  chatInput.onkeypress = (e) => {
+  chatInput.onkeyup = (e) => {
     if (e.key === 'Enter') {
       sendMessage();
     }
