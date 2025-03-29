@@ -19,33 +19,28 @@ function enterGame() {
 }
 
 function initializeMap() {
-  // Buscando o token do Mapbox via endpoint protegido
-  fetch('/api/mapbox', {
-    headers: {
-      // Substitua 'YOUR_CLIENT_SECRET' pelo mesmo valor definido na variável MY_SECRET no servidor
-      'Authorization': 'lavrovpass'
-    }
-  })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('Não autorizado');
+    fetch('/api/mapbox', {
+      headers: {
+        'Authorization': 'lavrovpass'
       }
-      return response.json();
     })
-    .then(data => {
-      mapboxgl.accessToken = data.token;
-      state.map = new mapboxgl.Map({
-        container: 'map',
-        style: 'mapbox://styles/mapbox/streets-v12',
-        center: [0, 0],
-        zoom: 1.5,
-        maxBounds: [[-180, -90], [180, 90]]
-      });
-    })
-    .catch(error => {
-      console.error('Erro ao buscar token:', error);
-    });
-}
+      .then(response => {
+        if (!response.ok) throw new Error('Não autorizado');
+        return response.json();
+      })
+      .then(data => {
+        mapboxgl.accessToken = data.token;
+        state.map = new mapboxgl.Map({
+          container: 'map',
+          style: 'mapbox://styles/mapbox/streets-v12',
+          center: [0, 0],
+          zoom: 1.5,
+          maxBounds: [[-180, -90], [180, 90]]
+        });
+      })
+      .catch(error => console.error('Erro ao buscar token:', error));
+  }
+
 
 function updatePlayerList(players) {
   state.players = players;
