@@ -1,3 +1,4 @@
+// server.js
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -11,18 +12,28 @@ app.use(express.static(__dirname));
 let players = [];
 
 io.on('connection', (socket) => {
+    console.log('Novo cliente conectado:', socket.id);
+
     socket.on('join', (username) => {
-        socket.username = username; // Armazena o nome no socket
-        if (!players.includes(username)) { // Evita duplicatas
+        socket.username = username;
+        if (!players.includes(username)) {
             players.push(username);
         }
-        io.emit('updatePlayers', players); // Envia a lista atualizada para todos
+        console.log('Jogadores atualizados:', players); // Log para depuração
+        io.emit('updatePlayers', players);
+    });
+
+    socket.on('chatMessage', ({ username, message }) => {
+        console.log('Mensagem recebida no servidor:', { username, message }); // Confirmação de recebimento
+        io.emit('chatMessage', { username, message }); // Retransmite para todos
+        console.log('Mensagem enviada para todos os clientes'); // Confirmação de envio
     });
 
     socket.on('disconnect', () => {
         if (socket.username) {
-            players = players.filter(player => player !== socket.username); // Remove o jogador da lista
-            io.emit('updatePlayers', players); // Atualiza a lista para todos os conectados
+            players = players.filter(player => player !== socket.username);
+            console.log('Jogador desconectado, nova lista:', players); // Log para depuração
+            io.emit('updatePlayers', players);
         }
     });
 });

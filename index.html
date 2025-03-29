@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jogo Multiplayer</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
 </head>
 <body>
     <div id="login-screen">
@@ -12,11 +14,42 @@
         <input type="text" id="username" placeholder="Seu nome">
         <button onclick="enterGame()">Entrar</button>
     </div>
-    <div id="game-screen" style="display: none;">
-        <h1>Jogadores Online</h1>
-        <ul id="player-list"></ul>
+    <div id="game-screen">
+        <div id="map"></div>
+
+        <button id="hamburger">&#9776;</button>
+
+        <div id="sidebar">
+            <h2>Jogadores Online</h2>
+            <ul id="player-list"></ul>
+            <div id="chat-container">
+                <div id="chat-messages"></div>
+                <div class="chat-sendgroup">
+                    <input type="text" id="chat-input" placeholder="Digite sua mensagem">
+                    <button id="chat-send">Send</button>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const hamburger = document.getElementById('hamburger');
+
+        hamburger.addEventListener('click', () => {
+        sidebar.classList.toggle('active');
+        });
+
+        // Reseta a sidebar quando a tela for maior que 1100px
+        window.addEventListener('resize', () => {
+        if (window.innerWidth > 1100) {
+            sidebar.classList.remove('active');
+        }
+        });
+    </script>
+
     <script src="/socket.io/socket.io.js"></script>
+    <script src="countryData.js"></script>
     <script src="client.js"></script>
 </body>
 </html>
