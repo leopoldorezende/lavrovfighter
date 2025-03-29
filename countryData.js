@@ -1,5 +1,3 @@
-mapboxgl.accessToken = 'pk.eyJ1IjoibGVvcG9sZG9yZXplbmRlIiwiYSI6ImNqOG9zaXVyazA3anozNG8weTVrcnl4NDgifQ._89Jf3MABokdSiU0fqX84w';
-
 const countryDataBase = {
     "United States of America": { 
         name: "Estados Unidos", 

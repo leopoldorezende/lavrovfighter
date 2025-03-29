@@ -20,7 +20,7 @@ function enterGame() {
 }
 
 function initializeMap() {
-    mapboxgl.accessToken = 'pk.eyJ1IjoibGVvcG9sZG9yZXplbmRlIiwiYSI6ImNqOG9zaXVyazA3anozNG8weTVrcnl4NDgifQ._89Jf3MABokdSiU0fqX84w';
+    mapboxgl.accessToken = process.env.MAP_APIKEY;
     state.map = new mapboxgl.Map({
         container: 'map',
         style: 'mapbox://styles/mapbox/streets-v12',
