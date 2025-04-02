@@ -2080,11 +2080,6 @@
           "country": "Tunisia",
           "type": "land",
           "enabled": true
-        },
-        {
-          "country": "Western Sahara",
-          "type": "land",
-          "enabled": true
         }
       ]
     },
@@ -2123,11 +2118,6 @@
           "country": "Algeria",
           "type": "land",
           "enabled": false
-        },
-        {
-          "country": "Western Sahara",
-          "type": "land",
-          "enabled": true
         },
         {
           "country": "Spain",
@@ -8119,54 +8109,6 @@
                   }
                 ]
               },
-                "Western Sahara": {
-                    "name": "Saara Ocidental",
-                    "population": {
-                        "value": 620000,
-                        "unit": "pessoas"
-                    },
-                    "gdp": {
-                        "value": 0.9,
-                        "unit": "bilhões USD"
-                    },
-                    "treasury": {
-                        "value": 0.1,
-                        "unit": "bilhões USD"
-                    },
-                    "researchDevelopment": {
-                        "value": 2,
-                        "unit": "escala 0-10"
-                    },
-                    "happiness": {
-                        "value": 4.5,
-                        "unit": "escala 0-10"
-                    },
-                    "military": {
-                        "navy": 10,
-                        "airforce": 5,
-                        "army": 20,
-                        "space": 0
-                    },
-                    "economicAlliances": [],
-                    "militaryAlliances": [],
-                    "borders": [
-                        {
-                            "country": "Morocco",
-                            "type": "land",
-                            "enabled": true
-                        },
-                        {
-                            "country": "Algeria",
-                            "type": "land",
-                            "enabled": true
-                        },
-                        {
-                            "country": "Mauritania",
-                            "type": "land",
-                            "enabled": true
-                        }
-                    ]
-                },
                 "Guinea-Bissau": {
                     "name": "Guiné-Bissau",
                     "population": {
