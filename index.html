@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jogo Multiplayer</title>
     <link rel="stylesheet" href="style.css">
+    <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
 <body>
     <div id="login-screen">
-        <h2>Quem você pensa que é?</h2>
+        <h2>Digite seu nome</h2>
         <input type="text" id="username" placeholder="Seu nome">
         <button id="enterButton">Entrar</button>
     </div>
@@ -24,7 +25,6 @@
             <span class="material-icons">chat</span>
           </button> -->
 
-
         <div id="sidebar">
             <div class="tabs">
                 <div class="tab active" data-target="chat">
@@ -36,7 +36,7 @@
             </div>
               
             <div id="chat" class="tab-content active">
-                <h2>Jogadores Online</h2>
+                <h2>Online</h2>
                 <div class="chat-section">
                     <ul id="player-list"></ul>
                     <div id="chat-container">
@@ -62,6 +62,9 @@
         const tabs = document.querySelectorAll('.tab');
         const contents = document.querySelectorAll('.tab-content');
 
+        const username = document.querySelector('#username');
+
+        username.focus();
 
         hamburger.addEventListener('click', () => {
             sidebar.classList.toggle('active');
