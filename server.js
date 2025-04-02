@@ -28,14 +28,26 @@ try {
 
 const availableCountries = Object.keys(countryData); // Lista inicial de todos os países
 const playerStates = new Map(); // Mapa para rastrear estados completos dos jogadores
+const socketIdToUsername = new Map(); // Mapeamento de socket.id para nome de usuário
 let eligibleCountries = []; // Lista dinâmica de países elegíveis para sorteio
 let players = [];
+
+// Armazenar histórico de mensagens do chat
+const publicChatHistory = [];
+const privateChatHistory = new Map(); // Map de "username1:username2" para array de mensagens
+const MAX_CHAT_HISTORY = 50; // Limitar o número de mensagens armazenadas
+
+// Função para gerar chave única para chats privados (em ordem alfabética para consistência)
+function getPrivateChatKey(user1, user2) {
+  return [user1, user2].sort().join(':');
+}
 
 io.on('connection', (socket) => {
   console.log('Novo cliente conectado:', socket.id);
 
   socket.on('join', (username) => {
     let playerState;
+    socketIdToUsername.set(socket.id, username);
 
     // Verifica se o jogador já tem um estado salvo
     if (playerStates.has(username)) {
@@ -93,16 +105,89 @@ io.on('connection', (socket) => {
     console.log('Países elegíveis atualizados:', eligibleCountries);
     io.emit('updatePlayers', players);
     socket.emit('stateRestored', playerState); // Envia o estado completo ao cliente
+    
+    // Envia o histórico de mensagens públicas para o cliente
+    socket.emit('chatHistory', { type: 'public', messages: publicChatHistory });
   });
 
-  socket.on('chatMessage', ({ username, message }) => {
+  // Solicitação de histórico de chat privado
+  socket.on('requestPrivateHistory', (targetUsername) => {
+    const username = socket.username;
+    if (!username || !targetUsername) return;
+    
+    const chatKey = getPrivateChatKey(username, targetUsername);
+    const history = privateChatHistory.get(chatKey) || [];
+    
+    socket.emit('chatHistory', { 
+      type: 'private', 
+      target: targetUsername,
+      messages: history 
+    });
+  });
+
+  // Recebimento de mensagens (públicas ou privadas)
+  socket.on('chatMessage', ({ username, message, isPrivate, recipient }) => {
     const playerState = playerStates.get(username);
-    if (playerState) {
-      playerState.customData.lastMessage = message; // Atualiza a última mensagem
-      const country = playerState.country || 'Sem país';
-      const fullUsername = `${country} - ${username}`;
-      console.log('Mensagem recebida no servidor:', { username: fullUsername, message });
-      io.emit('chatMessage', { username: fullUsername, message });
+    if (!playerState) return;
+    
+    const country = playerState.country || 'Sem país';
+    const fullUsername = `${country} - ${username}`;
+    playerState.customData.lastMessage = message; // Atualiza a última mensagem
+    
+    // Cria objeto de mensagem
+    const messageObj = { 
+      username: fullUsername, 
+      message, 
+      timestamp: Date.now(),
+      isPrivate: isPrivate,
+      recipient: recipient
+    };
+    
+    if (isPrivate && recipient) {
+      // Mensagem privada
+      const chatKey = getPrivateChatKey(username, recipient);
+      
+      // Inicializa o histórico se não existir
+      if (!privateChatHistory.has(chatKey)) {
+        privateChatHistory.set(chatKey, []);
+      }
+      
+      // Adiciona a mensagem ao histórico privado
+      const history = privateChatHistory.get(chatKey);
+      history.push(messageObj);
+      
+      // Limita o tamanho do histórico
+      if (history.length > MAX_CHAT_HISTORY) {
+        history.shift();
+      }
+      
+      console.log(`Mensagem privada de ${username} para ${recipient}:`, message);
+      
+      // Encontrar o socket.id do destinatário
+      let recipientSocketId = null;
+      for (const [socketId, user] of socketIdToUsername.entries()) {
+        if (user === recipient) {
+          recipientSocketId = socketId;
+          break;
+        }
+      }
+      
+      // Envia apenas para o remetente e o destinatário
+      socket.emit('chatMessage', messageObj);
+      if (recipientSocketId) {
+        io.to(recipientSocketId).emit('chatMessage', messageObj);
+      }
+    } else {
+      // Mensagem pública
+      publicChatHistory.push(messageObj);
+      
+      // Limita o tamanho do histórico
+      if (publicChatHistory.length > MAX_CHAT_HISTORY) {
+        publicChatHistory.shift();
+      }
+      
+      console.log('Mensagem pública recebida:', messageObj);
+      io.emit('chatMessage', messageObj);
     }
   });
 
@@ -121,6 +206,9 @@ io.on('connection', (socket) => {
       // Mantém o estado no playerStates para reconexão, mas pode adicionar timeout se desejar
       console.log('Jogador desconectado, nova lista:', players);
       io.emit('updatePlayers', players);
+      
+      // Remove do mapeamento de socket
+      socketIdToUsername.delete(socket.id);
     }
   });
 });

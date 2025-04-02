@@ -199,7 +199,7 @@ button:hover {
     height: calc(100%);
 }
 #chat {
-    height: calc(100% - 170px);
+    height: calc(100% - 120px);
 }
 #chat-messages {
     flex: 1;
@@ -259,3 +259,29 @@ button:hover {
 .tab.active { background: rgba(255,255,255,.3); font-weight: bold; }
 .tab-content { display: none; padding-top: 16px;}
 .tab-content.active { display: block; }
+
+h4 {
+    margin: 0;
+}
+
+#player-list .chat-option {
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+  }
+  #player-list .chat-option:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+  }
+  #player-list .chat-option.active {
+    background-color: rgba(0, 100, 255, 0.2);
+    font-weight: bold;
+  }
+  #chat-header {
+    font-weight: bold;
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 10px;
+  }
+  .message.private {
+    background-color: rgba(200, 200, 255, 0.3);
+  }

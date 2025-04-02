@@ -4,7 +4,11 @@ const state = {
   map: null,
   players: [],
   myCountry: null,
-  customData: {}
+  customData: {},
+  currentChatMode: 'public', // 'public' ou nome do jogador para privado
+  chatHistories: {
+    public: []
+  }
 };
 
 const enterButton = document.getElementById('enterButton');
@@ -177,15 +181,80 @@ function performCentering(country) {
 
 function updatePlayerList(players) {
   state.players = players;
+  const youTitle = document.getElementById('you');
   const playerList = document.getElementById('player-list');
   playerList.innerHTML = '';
+  
+  // Adiciona a opção "Público" como primeiro item
+  const publicItem = document.createElement('li');
+  publicItem.textContent = 'Público';
+  publicItem.classList.add('chat-option');
+  if (state.currentChatMode === 'public') {
+    publicItem.classList.add('active');
+  }
+  publicItem.onclick = () => switchChatMode('public');
+  playerList.appendChild(publicItem);
+  
+  // Adiciona os jogadores
   players.forEach(player => {
-    const li = document.createElement('li');
-    li.textContent = player;
-    playerList.appendChild(li);
+    const username = player.split(' (')[0]; // Extrai o nome sem o país
+    if (username !== socket.username) { // Não adicionar a si mesmo como opção de chat privado
+      const li = document.createElement('li');
+      li.textContent = player;
+      li.classList.add('chat-option');
+      if (state.currentChatMode === username) {
+        li.classList.add('active');
+      }
+      li.onclick = () => switchChatMode(username);
+      playerList.appendChild(li);
+    } else {
+      // Adicionar a si mesmo sem opção de clique
+      youTitle.textContent = player;
+    }
   });
+
   if (state.map && state.map.loaded()) {
     updateMapColors();
+  }
+  
+  // Adiciona estilos CSS para a lista de jogadores se ainda não existir
+  if (!document.getElementById('player-list-styles')) {
+    const style = document.createElement('style');
+    style.id = 'player-list-styles';
+    document.head.appendChild(style);
+  }
+}
+
+function switchChatMode(mode) {
+  console.log(`Alterando modo de chat para: ${mode}`);
+  state.currentChatMode = mode;
+  
+  // Atualiza a lista de jogadores para destacar a seleção atual
+  updatePlayerList(state.players);
+  
+  // Atualiza o cabeçalho do chat
+  const chatHeader = document.getElementById('chat-header');
+  if (!chatHeader) {
+    const header = document.createElement('div');
+    header.id = 'chat-header';
+    const chatMessages = document.getElementById('chat-messages');
+    chatMessages.parentNode.insertBefore(header, chatMessages);
+  }
+  
+  document.getElementById('chat-header').textContent = mode === 'public' 
+    ? 'Chat Público' 
+    : `Chat Privado com ${mode}`;
+  
+  // Carrega o histórico apropriado
+  if (mode === 'public') {
+    displayChatHistory(state.chatHistories.public || []);
+  } else {
+    // Se já temos o histórico em cache, mostramos; senão, solicitamos ao servidor
+    if (state.chatHistories[mode]) {
+      displayChatHistory(state.chatHistories[mode]);
+    } else {
+      socket.emit('requestPrivateHistory', mode);
+    }
   }
 }
 
@@ -204,11 +273,25 @@ function setupChat(username) {
   const chatInput = document.getElementById('chat-input');
   const chatSend = document.getElementById('chat-send');
   const chatMessages = document.getElementById('chat-messages');
+  
+  // Adiciona o cabeçalho do chat se não existir
+  if (!document.getElementById('chat-header')) {
+    const header = document.createElement('div');
+    header.id = 'chat-header';
+    header.textContent = 'Chat Público';
+    chatMessages.parentNode.insertBefore(header, chatMessages);
+  }
 
   function sendMessage() {
     const message = chatInput.value.trim();
     if (message) {
-      socket.emit('chatMessage', { username, message });
+      const isPrivate = state.currentChatMode !== 'public';
+      socket.emit('chatMessage', { 
+        username, 
+        message, 
+        isPrivate, 
+        recipient: isPrivate ? state.currentChatMode : null 
+      });
       chatInput.value = '';
     }
   }
@@ -217,15 +300,106 @@ function setupChat(username) {
   chatInput.onkeyup = (e) => {
     if (e.key === 'Enter') sendMessage();
   };
-
-  socket.on('chatMessage', ({ username: sender, message }) => {
-    const msgDiv = document.createElement('div');
-    msgDiv.classList.add('message', sender.includes(username) ? 'self' : 'other');
-    msgDiv.textContent = `${sender}: ${message}`;
-    chatMessages.appendChild(msgDiv);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-  });
 }
+
+function shouldDisplayMessage(messageData) {
+  // No modo público, mostra apenas mensagens públicas
+  if (state.currentChatMode === 'public') {
+    return !messageData.isPrivate;
+  }
+  
+  // No modo privado, mostra apenas mensagens entre o usuário atual e o destinatário selecionado
+  return messageData.isPrivate && (
+    (messageData.username.includes(socket.username) && messageData.recipient === state.currentChatMode) ||
+    (messageData.username.includes(state.currentChatMode) && messageData.recipient === socket.username)
+  );
+}
+
+function displayMessage(messageData) {
+  // Verifica se a mensagem deve ser exibida no modo atual
+  if (!shouldDisplayMessage(messageData)) {
+    return;
+  }
+  
+  const chatMessages = document.getElementById('chat-messages');
+  const msgDiv = document.createElement('div');
+  
+  // Adiciona classes apropriadas
+  const classes = ['message'];
+  if (messageData.username.includes(socket.username)) {
+    classes.push('self');
+  } else {
+    classes.push('other');
+  }
+  if (messageData.isPrivate) {
+    classes.push('private');
+  }
+  msgDiv.classList.add(...classes);
+  
+  // Se houver timestamp, formatar e exibir hora da mensagem
+  let timeDisplay = '';
+  if (messageData.timestamp) {
+    const date = new Date(messageData.timestamp);
+    timeDisplay = `[${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}] `;
+  }
+  
+  // Adiciona indicador de privado se for uma mensagem privada
+  const privateIndicator = messageData.isPrivate ? '[Privado] ' : '';
+  
+  msgDiv.textContent = `${timeDisplay}${privateIndicator}${messageData.username}: ${messageData.message}`;
+  chatMessages.appendChild(msgDiv);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function displayChatHistory(messages) {
+  const chatMessages = document.getElementById('chat-messages');
+  chatMessages.innerHTML = '';
+  messages.forEach(messageData => {
+    displayMessage(messageData);
+  });
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Ouvinte para receber o histórico de mensagens
+socket.on('chatHistory', (data) => {
+  console.log(`Histórico de chat ${data.type} recebido:`, data.messages.length, 'mensagens');
+  
+  // Armazena o histórico no cache
+  if (data.type === 'public') {
+    state.chatHistories.public = data.messages;
+    if (state.currentChatMode === 'public') {
+      displayChatHistory(data.messages);
+    }
+  } else if (data.type === 'private' && data.target) {
+    state.chatHistories[data.target] = data.messages;
+    if (state.currentChatMode === data.target) {
+      displayChatHistory(data.messages);
+    }
+  }
+});
+
+// Ouvinte de mensagens individuais
+socket.on('chatMessage', (messageData) => {
+  // Armazena a mensagem no histórico apropriado
+  if (!messageData.isPrivate) {
+    if (!state.chatHistories.public) {
+      state.chatHistories.public = [];
+    }
+    state.chatHistories.public.push(messageData);
+  } else {
+    const chatPartner = messageData.username.includes(socket.username) 
+      ? messageData.recipient 
+      : messageData.username.split(' - ')[1];
+    
+    if (!state.chatHistories[chatPartner]) {
+      state.chatHistories[chatPartner] = [];
+    }
+    state.chatHistories[chatPartner].push(messageData);
+  }
+  
+  // Exibe a mensagem se estiver no modo de chat correspondente
+  displayMessage(messageData);
+});
 
 socket.on('updatePlayers', (players) => {
   console.log('Jogadores atualizados:', players);
