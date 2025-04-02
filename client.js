@@ -340,13 +340,13 @@ function displayMessage(messageData) {
   let timeDisplay = '';
   if (messageData.timestamp) {
     const date = new Date(messageData.timestamp);
-    timeDisplay = `[${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}] `;
+    timeDisplay = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')} `;
   }
   
   // Adiciona indicador de privado se for uma mensagem privada
   const privateIndicator = messageData.isPrivate ? '[Privado] ' : '';
   
-  msgDiv.textContent = `${timeDisplay}${privateIndicator}${messageData.username}: ${messageData.message}`;
+  msgDiv.innerHTML = `<span>${timeDisplay} ${privateIndicator} ${messageData.username}</span> ${messageData.message}`;
   chatMessages.appendChild(msgDiv);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }

@@ -235,9 +235,15 @@ button:hover {
     background: #0056b3;
 }
 .message {
+    font-size: 16px;
     margin: 5px 0;
     padding: 5px;
     border-radius: 3px;
+}
+.message > span {
+    display: block;
+    font-size: 13px;
+    color: rgba(255,255,255,.5);
 }
 .message.self {
     background: rgba(0,0,0,.5);
@@ -282,6 +288,6 @@ h4 {
     border-bottom: 1px solid #ddd;
     margin-bottom: 10px;
   }
-  .message.private {
+  /*.message.private {
     background-color: rgba(200, 200, 255, 0.3);
-  }
+  }*/
