@@ -2,9 +2,9 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const fs = require('fs');
-const { setupRoomHandlers } = require('./server-rooms');
-const { setupChatHandlers } = require('./server-chat');
-const { setupPlayerHandlers } = require('./server-players');
+const { setupRoomHandlers } = require('./server/server-rooms');
+const { setupChatHandlers } = require('./server/server-chat');
+const { setupPlayerHandlers } = require('./server/server-players');
 require('dotenv').config();
 
 // Inicialização Express e Socket.io
