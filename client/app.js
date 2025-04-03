@@ -7,7 +7,7 @@ import { initSocketHandlers, socket } from './socket-handler.js';
 import { initUIHandlers } from './ui.js';
 import { initializeMap } from './map.js';
 import { setupChat } from './chat.js';
-import { loadCountryData } from './api.js';
+import { loadCountriesData } from './api.js';
 
 // Inicializa a aplicação
 function initApp() {
@@ -21,7 +21,7 @@ function initApp() {
   initSocketHandlers();
 
   // Carrega os dados dos países
-  loadCountryData().then(data => {
+  loadCountriesData().then(data => {
     console.log('Dados dos países carregados.');
   });
   

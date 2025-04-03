@@ -24,11 +24,11 @@ app.get('/api/mapbox', (req, res) => {
 });
 
 // Carrega dados de países
-let countryData;
+let countriesData;
 try {
-  countryData = JSON.parse(fs.readFileSync('countryData.json', 'utf8'));
+  countriesData = JSON.parse(fs.readFileSync('countriesData.json', 'utf8'));
 } catch (error) {
-  console.error('Erro ao carregar countryData.json:', error);
+  console.error('Erro ao carregar countriesData.json:', error);
   process.exit(1);
 }
 
@@ -60,12 +60,12 @@ function getPrivateChatKey(user1, user2) {
 // Estado global compartilhado
 const gameState = {
   rooms: new Map(), // Mapa para armazenar todas as salas
-  availableCountries: Object.keys(countryData), // Lista inicial de todos os países
+  availableCountries: Object.keys(countriesData), // Lista inicial de todos os países
   playerStates: new Map(), // Mapa para rastrear estados completos dos jogadores por sala
   socketIdToUsername: new Map(), // Mapeamento de socket.id para nome de usuário
   userToRoom: new Map(), // Mapeamento de usuário para sala atual
   userRoomCountries: new Map(), // Mapeamento de "usuario:sala" para país atribuído
-  countryData: countryData,
+  countriesData: countriesData,
   MAX_CHAT_HISTORY: MAX_CHAT_HISTORY,
   createRoom: createRoom,
   getPrivateChatKey: getPrivateChatKey

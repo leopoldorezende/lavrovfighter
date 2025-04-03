@@ -191,7 +191,7 @@ function setupRoomHandlers(io, socket, gameState) {
           randomCountry = available[Math.floor(Math.random() * available.length)];
           
           // Define os países elegíveis como países que fazem fronteira
-          const borderCountries = gameState.countryData[randomCountry].borders
+          const borderCountries = gameState.countriesData[randomCountry].borders
             .filter(border => border.enabled)
             .map(border => border.country)
             .filter(country => gameState.availableCountries.includes(country));
@@ -231,7 +231,7 @@ function setupRoomHandlers(io, socket, gameState) {
           }
           
           // Adiciona novos países de fronteira aos elegíveis
-          const newBorders = gameState.countryData[randomCountry].borders
+          const newBorders = gameState.countriesData[randomCountry].borders
             .filter(border => border.enabled)
             .map(border => border.country)
             .filter(country => gameState.availableCountries.includes(country));

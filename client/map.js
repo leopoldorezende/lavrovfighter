@@ -1,114 +1,127 @@
 // map.js - Funcionalidades do mapa
 
 import { state } from './state.js';
-import { loadCountryData } from './api.js';
+import { loadCountriesData, loadCountriesCoordinates, getMapboxToken } from './api.js';
+
+// Variável global para armazenar os dados de coordenadas dos países
+let countriesCoordinates = {
+  customZoomLevels: {},
+  countries: {}
+};
 
 // Inicializar o mapa
-function initializeMap(username) {
-  fetch('/api/mapbox', {
-    headers: { 'Authorization': 'lavrovpass' }
-  })
-    .then(response => {
-      if (!response.ok) throw new Error('Não autorizado');
-      return response.json();
-    })
-    .then(data => {
-      mapboxgl.accessToken = data.token;
+async function initializeMap(username) {
+  try {
+    // Carrega as coordenadas dos países primeiro
+    const coordinates = await loadCountriesCoordinates();
+    if (coordinates) {
+      countriesCoordinates = coordinates;
+      console.log('Coordenadas carregadas com sucesso:', countriesCoordinates);
+    }
+    
+    // Usa a função getMapboxToken do api.js
+    const token = await getMapboxToken();
+    mapboxgl.accessToken = token;
+    
+    state.map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/leopoldorezende/cklv3mqga2ki517m1zqftm5vp',
+      // style: 'mapbox://styles/mapbox/streets-v12',
+      // worldview: 'IN',
+      language: "Portuguese",
+      center: [0, 0],
+      zoom: 1.5,
+      maxZoom: 6,
+      // maxBounds: [[-180, -90], [180, 90]]
+    });
 
-      state.map = new mapboxgl.Map({
-        container: 'map',
-        style: 'mapbox://styles/mapbox/streets-v12',
-        center: [0, 0],
-        zoom: 1.5,
-        maxZoom: 6,
-        maxBounds: [[-180, -90], [180, 90]]
+    state.map.on('load', () => {
+      console.log('Mapa carregado com sucesso');
+      state.map.addSource('countries', {
+        type: 'vector',
+        url: 'mapbox://mapbox.country-boundaries-v1'
       });
 
-      state.map.on('load', () => {
-        console.log('Mapa carregado com sucesso');
-        state.map.addSource('countries', {
-          type: 'vector',
-          url: 'mapbox://mapbox.country-boundaries-v1'
-        });
-
-        // Adiciona camada de preenchimento para os países
-        state.map.addLayer({
-          'id': 'country-fills',
-          'type': 'fill',
-          'source': 'countries',
-          'source-layer': 'country_boundaries',
-          'paint': {
-            'fill-color': [
-              'case',
-              ['==', ['get', 'name_en'], state.myCountry], 'rgba(255, 220, 0, 0.8)',
-              ['in', ['get', 'name_en'], ['literal', state.players.map(p => p.match(/\((.*)\)/)?.[1] || '')]], 'rgba(0, 200, 50, 0.8)',
-              'rgba(30, 50, 70, 0)'
-            ],
-            'fill-opacity': 0.8
-          }
-        });
-        
-        // Adiciona camada de borda para os países ativos
-        state.map.addLayer({
-          'id': 'country-borders',
-          'type': 'line',
-          'source': 'countries',
-          'source-layer': 'country_boundaries',
-          'layout': {},
-          'paint': {
-            'line-color': '#333333',
-            'line-width': 1,
-            'line-opacity': [
-              'case',
-              ['==', ['get', 'name_en'], state.myCountry], 1,
-              ['in', ['get', 'name_en'], ['literal', state.players.map(p => p.match(/\((.*)\)/)?.[1] || '')]], 1,
-              0
-            ]
-          }
-        });
-        
-        // Remove labels desnecessários
-        const layers = state.map.getStyle().layers;
-        layers.forEach(layer => {
-          if (layer.type === 'symbol' && !layer.id.includes('country')) {
-            state.map.setLayoutProperty(layer.id, 'visibility', 'none');
-          }
-          if (layer.id.includes('road') || layer.id.includes('street') || layer.id.includes('highway')) {
-            state.map.setLayoutProperty(layer.id, 'visibility', 'none');
-          }
-          if (layer.id.includes('admin') && 
-             (layer.id.includes('state') || 
-             layer.id.includes('province') || 
-             layer.id.toLowerCase().includes('admin-1'))) {
-                state.map.setLayoutProperty(layer.id, 'visibility', 'none');
-          }
-        });
-
-        // Adiciona handler de clique para os países
-        addCountryClickHandler();
-        
-        // Centraliza no país do jogador logo após o mapa carregar completamente
-        // Aguarda um pequeno período para garantir que todos os dados do mapa estejam disponíveis
-        setTimeout(() => {
-          if (state.myCountry) {
-            console.log('Centralizando automaticamente no país do jogador:', state.myCountry);
-            centerMapOnCountry(state.myCountry);
-          } else {
-            console.log('País do jogador não definido, usando visão padrão do mapa');
-          }
-        }, 500);
+      // Adiciona camada de preenchimento para os países
+      state.map.addLayer({
+        'id': 'country-fills',
+        'type': 'fill',
+        'source': 'countries',
+        'source-layer': 'country_boundaries',
+        // 'filter': ['in', ['get', 'worldview'], ['literal', ['IN', 'all']]],
+        'paint': {
+          'fill-color': [
+            'case',
+            ['==', ['get', 'name_en'], state.myCountry], 'rgba(255, 220, 0, 0.8)',
+            ['in', ['get', 'name_en'], ['literal', state.players.map(p => p.match(/\((.*)\)/)?.[1] || '')]], 'rgba(0, 200, 50, 0.8)',
+            'rgba(30, 50, 70, 0)'
+          ],
+          'fill-opacity': 0.8
+        }
       });
 
-      // Removido o evento moveend para não salvar as coordenadas a cada movimento
-    })
-    .catch(error => console.error('Erro ao carregar mapa:', error));
+
+      // Adiciona camada de borda para os países ativos
+      state.map.addLayer({
+        'id': 'country-borders',
+        'type': 'line',
+        'source': 'countries',
+        'source-layer': 'country_boundaries',
+        // 'filter': ['in', ['get', 'worldview'], ['literal', ['IN', 'all']]],
+        'layout': {},
+        'paint': {
+          'line-color': '#333333',
+          'line-width': 1,
+          'line-opacity': [
+            'case',
+            ['==', ['get', 'name_en'], state.myCountry], 1,
+            ['in', ['get', 'name_en'], ['literal', state.players.map(p => p.match(/\((.*)\)/)?.[1] || '')]], 1,
+            0
+          ]
+        }
+      });
+      
+      // Remove labels desnecessários
+      const layers = state.map.getStyle().layers;
+      layers.forEach(layer => {
+        if (layer.type === 'symbol' && !layer.id.includes('country')) {
+          state.map.setLayoutProperty(layer.id, 'visibility', 'none');
+        }
+        if (layer.id.includes('road') || layer.id.includes('street') || layer.id.includes('highway')) {
+          state.map.setLayoutProperty(layer.id, 'visibility', 'none');
+        }
+        if (layer.id.includes('admin') && 
+           (layer.id.includes('state') || 
+           layer.id.includes('province') || 
+           layer.id.toLowerCase().includes('admin-1'))) {
+              state.map.setLayoutProperty(layer.id, 'visibility', 'none');
+        }
+      });
+
+      // Adiciona handler de clique para os países
+      addCountryClickHandler();
+      
+      // Centraliza no país do jogador logo após o mapa carregar completamente
+      // Aguarda um pequeno período para garantir que todos os dados do mapa estejam disponíveis
+      setTimeout(() => {
+        if (state.myCountry) {
+          console.log('Centralizando automaticamente no país do jogador:', state.myCountry);
+          centerMapOnCountry(state.myCountry);
+        } else {
+          console.log('País do jogador não definido, usando visão padrão do mapa');
+        }
+      }, 1000);
+    });
+  } catch (error) {
+    console.error('Erro ao inicializar o mapa:', error);
+  }
 }
 
 // Adiciona handler para clique nos países
 function addCountryClickHandler() {
   // Carrega dados dos países para validar cliques
-  loadCountryData().then(countryData => {
-    state.countryData = countryData;
+  loadCountriesData().then(countriesData => {
+    state.countriesData = countriesData;
     
     // Adiciona o handler de evento para clique no mapa
     state.map.on('click', (e) => {
@@ -121,11 +134,11 @@ function addCountryClickHandler() {
         const clickedCountry = features[0].properties.name_en;
         console.log(`País clicado: ${clickedCountry}`);
         
-        // Verifica se o país existe no countryData
-        if (countryData && countryData[clickedCountry]) {
+        // Verifica se o país existe no countriesData
+        if (countriesData && countriesData[clickedCountry]) {
           centerMapOnCountry(clickedCountry);
         } else {
-          console.log(`País ${clickedCountry} não encontrado no countryData`);
+          console.log(`País ${clickedCountry} não encontrado no countriesData`);
         }
       }
     });
@@ -140,31 +153,16 @@ function getCountryCenter(country) {
   }
   
   try {
-    // Coordenadas personalizadas para países grandes ou de formato irregular
-    const customCoordinates = {
-      "Russia": [90, 60],          // Centralizado mais na parte habitada
-      "United States": [-98, 39.5], // Centro continental dos EUA
-      "Canada": [-96, 62],         // Centralizado na parte habitada
-      "Brazil": [-53, -10],        // Melhor visualização do território
-      "Argentina": [-65, -38],     // Centralizado na parte continental
-      "Australia": [134, -25],     // Centralizado no continente
-      "China": [105, 35],          // Centralizado na massa terrestre
-      "India": [80, 22],           // Centralizado no subcontinente
-      "Indonesia": [120, -2],      // Centralizado no arquipélago
-      "Mexico": [-102, 23],        // Centralizado no território continental
-      "Chile": [-71, -37]          // Posição para melhor visualizar o formato alongado
-    };
-    
-    // Se for um país com coordenadas personalizadas, use-as
-    if (customCoordinates[country]) {
-      console.log(`Usando coordenadas personalizadas para ${country}:`, customCoordinates[country]);
-      return customCoordinates[country];
+    // Verifica se o país está no arquivo de coordenadas personalizadas
+    if (countriesCoordinates.countries && countriesCoordinates.countries[country]) {
+      console.log(`Usando coordenadas personalizadas para ${country}:`, countriesCoordinates.countries[country]);
+      return countriesCoordinates.countries[country];
     }
     
-    // Para outros países, primeiro tenta usar os dados do countryData se disponível
-    if (state.countryData && state.countryData[country] && state.countryData[country].coordinates) {
-      console.log(`Usando coordenadas de countryData para ${country}:`, state.countryData[country].coordinates);
-      return state.countryData[country].coordinates;
+    // Para outros países, primeiro tenta usar os dados do countriesData se disponível
+    if (state.countriesData && state.countriesData[country] && state.countriesData[country].coordinates) {
+      console.log(`Usando coordenadas de countriesData para ${country}:`, state.countriesData[country].coordinates);
+      return state.countriesData[country].coordinates;
     }
     
     // Tenta obter a geometria do país via Mapbox
@@ -252,27 +250,12 @@ function performCentering(country) {
 function animateToPosition(center, country) {
   console.log(`Centralizando em ${country} com coordenadas:`, center);
   
-  // Define zoom personalizado para países grandes
-  let zoomLevel = 4; // Zoom padrão
+  // Define zoom padrão
+  let zoomLevel = 4;
   
-  // Países que precisam de zoom personalizado
-  const customZoomLevels = {
-    "Russia": 3,
-    "United States": 3,
-    "Canada": 3,
-    "Brazil": 3,
-    "China": 3,
-    "Australia": 3,
-    "India": 3.5,
-    "Argentina": 3.5,
-    "Indonesia": 3.5,
-    "Mexico": 3.5,
-    "Chile": 3.5
-  };
-  
-  // Aplica zoom personalizado se definido
-  if (customZoomLevels[country]) {
-    zoomLevel = customZoomLevels[country];
+  // Aplica zoom personalizado se definido no arquivo JSON
+  if (countriesCoordinates.customZoomLevels && countriesCoordinates.customZoomLevels[country]) {
+    zoomLevel = countriesCoordinates.customZoomLevels[country];
   }
   
   state.map.flyTo({
