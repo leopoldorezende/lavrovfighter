@@ -1,6 +1,5 @@
 // map.js - Funcionalidades do mapa
 
-import { socket } from './socket-handler.js';
 import { state } from './state.js';
 import { loadCountryData } from './api.js';
 
@@ -21,6 +20,7 @@ function initializeMap(username) {
         style: 'mapbox://styles/mapbox/streets-v12',
         center: [0, 0],
         zoom: 1.5,
+        maxZoom: 6,
         maxBounds: [[-180, -90], [180, 90]]
       });
 
@@ -66,12 +66,21 @@ function initializeMap(username) {
             ]
           }
         });
-
+        
         // Remove labels desnecessários
         const layers = state.map.getStyle().layers;
         layers.forEach(layer => {
           if (layer.type === 'symbol' && !layer.id.includes('country')) {
             state.map.setLayoutProperty(layer.id, 'visibility', 'none');
+          }
+          if (layer.id.includes('road') || layer.id.includes('street') || layer.id.includes('highway')) {
+            state.map.setLayoutProperty(layer.id, 'visibility', 'none');
+          }
+          if (layer.id.includes('admin') && 
+             (layer.id.includes('state') || 
+             layer.id.includes('province') || 
+             layer.id.toLowerCase().includes('admin-1'))) {
+                state.map.setLayoutProperty(layer.id, 'visibility', 'none');
           }
         });
 
@@ -273,31 +282,6 @@ function animateToPosition(center, country) {
     curve: 1,
     essential: true
   });
-  updateMapColors();
 }
 
-// Atualizar as cores dos países no mapa
-function updateMapColors() {
-  if (!state.map || !state.map.getLayer('country-fills')) return;
-  const activeCountries = state.players.map(player => player.match(/\((.*)\)/)?.[1] || '');
-  
-  // Atualiza as cores de preenchimento
-  state.map.setPaintProperty('country-fills', 'fill-color', [
-    'case',
-    ['==', ['get', 'name_en'], state.myCountry], 'rgba(255, 220, 0, 0.8)',
-    ['in', ['get', 'name_en'], ['literal', activeCountries]], 'rgba(0, 200, 50, 0.8)',
-    'rgba(30, 50, 70, 0)'
-  ]);
-  
-  // Atualiza a visibilidade das bordas
-  if (state.map.getLayer('country-borders')) {
-    state.map.setPaintProperty('country-borders', 'line-opacity', [
-      'case',
-      ['==', ['get', 'name_en'], state.myCountry], 1,
-      ['in', ['get', 'name_en'], ['literal', activeCountries]], 1,
-      0
-    ]);
-  }
-}
-
-export { initializeMap, getCountryCenter, centerMapOnCountry, updateMapColors };
+export { initializeMap, getCountryCenter, centerMapOnCountry };

@@ -107,9 +107,15 @@ html, body {
 }
 
 .room-details h4 {
+    display: block;
     margin: 0 0 5px 0;
     font-size: 18px;
     color: #fff;
+    cursor: pointer;
+}
+
+.room-details h4:hover {
+    color: #ddd;
 }
 
 .room-details p {

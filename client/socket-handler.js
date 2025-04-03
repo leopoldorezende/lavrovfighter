@@ -2,7 +2,7 @@
 
 import { state } from './state.js';
 import { updateRoomsList, updateRoomInfo } from './rooms.js';
-import { centerMapOnCountry, updateMapColors } from './map.js';
+import { centerMapOnCountry } from './map.js';
 import { displayMessage, displayChatHistory, updatePlayerList } from './chat.js';
 
 // Inicializa o socket

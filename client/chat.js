@@ -2,7 +2,8 @@
 
 import { socket } from './socket-handler.js';
 import { state } from './state.js';
-import { updateMapColors } from './map.js';
+import { centerMapOnCountry } from './map.js';
+
 
 // Configura o sistema de chat
 function setupChat(username) {
@@ -175,18 +176,64 @@ function updatePlayerList(players) {
     } else {
       // Adicionar a si mesmo sem opção de clique
       youTitle.textContent = player;
+
+      // Adiciona o event listener para centralizar no mapa
+      youTitle.title = "Clique para centralizar no seu país";
+      
+      // Remove event listeners antigos para evitar duplicação
+      const newYouTitle = youTitle.cloneNode(true);
+      youTitle.parentNode.replaceChild(newYouTitle, youTitle);
+      
+      // Adiciona o novo event listener
+      newYouTitle.addEventListener('click', () => {
+        if (state.myCountry) {
+          console.log("Centralizando no país:", state.myCountry);
+          centerMapOnCountry(state.myCountry);
+        }
+      });
     }
   });
-
-  if (state.map && state.map.loaded()) {
-    updateMapColors();
-  }
   
   // Adiciona estilos CSS para a lista de jogadores se ainda não existir
   if (!document.getElementById('player-list-styles')) {
     const style = document.createElement('style');
     style.id = 'player-list-styles';
     document.head.appendChild(style);
+  }
+  
+  // ADICIONADO: Atualiza o mapa para refletir os jogadores atuais
+  if (state.map && state.map.loaded()) {
+    try {
+      // Extrai a lista de países dos outros jogadores
+      const otherCountries = players
+        .map(p => {
+          const match = p.match(/\((.*)\)/);
+          return match ? match[1] : '';
+        })
+        .filter(country => country !== state.myCountry && country !== '');
+      
+      console.log("Atualizando mapa com países dos jogadores:", otherCountries);
+      
+      // Atualiza a expressão de preenchimento
+      state.map.setPaintProperty('country-fills', 'fill-color', [
+        'case',
+        ['==', ['get', 'name_en'], state.myCountry], 'rgba(255, 220, 0, 0.8)',
+        ['in', ['get', 'name_en'], ['literal', otherCountries]], 'rgba(0, 200, 50, 0.8)',
+        'rgba(30, 50, 70, 0)'
+      ]);
+      
+      // Atualiza a expressão de borda
+      state.map.setPaintProperty('country-borders', 'line-opacity', [
+        'case',
+        ['==', ['get', 'name_en'], state.myCountry], 1,
+        ['in', ['get', 'name_en'], ['literal', otherCountries]], 1,
+        0
+      ]);
+    } catch (error) {
+      console.error("Erro ao atualizar camadas do mapa:", error);
+    }
+  } else {
+    console.log("Mapa não está pronto para atualização");
   }
 }
 
