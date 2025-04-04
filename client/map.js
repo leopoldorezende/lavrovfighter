@@ -128,23 +128,41 @@ function addCountryClickHandler() {
     
     // Adiciona o handler de evento para clique no mapa
     state.map.on('click', (e) => {
-      // Utiliza o Mapbox para encontrar os recursos no ponto clicado
+      e.originalEvent.stopPropagation();
+    
+      const sidebar = document.getElementById('sidebar');
+      const sidetools = document.getElementById('sidetools');
+    
+      const sidebarAberta = sidebar.classList.contains('active');
+      const sidetoolsAberto = sidetools.classList.contains('active');
+    
+      // Se qualquer um dos dois estiver aberto, só fecha e para tudo
+      if (sidebarAberta || sidetoolsAberto) {
+        sidebar.classList.remove('active');
+        sidetools.classList.remove('active');
+        return;
+      }
+    
       const features = state.map.queryRenderedFeatures(e.point, {
         layers: ['country-fills']
       });
-      
+    
       if (features.length > 0) {
         const clickedCountry = features[0].properties.name_en;
-        console.log(`País clicado: ${clickedCountry}`);
-        
-        // Verifica se o país existe no countriesData
-        if (countriesData && countriesData[clickedCountry]) {
+    
+        if (state.countriesData && state.countriesData[clickedCountry]) {
+          console.log(`País válido clicado: ${clickedCountry}`);
           centerMapOnCountry(clickedCountry);
-          
-          // Exibe os detalhes do país clicado
           displayCountryDetails(clickedCountry);
-        } else {
-          console.log(`País ${clickedCountry} não encontrado no countriesData`);
+    
+          // Ativa aba "País"
+          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+          document.querySelector('.tab[data-target="country"]').classList.add('active');
+          document.getElementById('country').classList.add('active');
+    
+          // Abre a sidebar
+          sidebar.classList.add('active');
         }
       }
     });
