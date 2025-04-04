@@ -114,6 +114,7 @@ function initSocketHandlers() {
 
   // Eventos de jogadores
   socket.on('updatePlayers', (players) => {
+    if (JSON.stringify(players) === JSON.stringify(state.players)) return;
     console.log('Jogadores atualizados:', players);
     updatePlayerList(players);
   });

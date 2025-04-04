@@ -5,16 +5,23 @@ function initUIHandlers() {
     // Trata o menu hamburguer e a barra lateral
     const sidebar = document.getElementById('sidebar');
     const hamburger = document.getElementById('hamburger');
+    const buttonTools = document.getElementById('button-tools');
     const tabs = document.querySelectorAll('.tab');
     const contents = document.querySelectorAll('.tab-content');
   
     hamburger.addEventListener('click', () => {
       sidebar.classList.toggle('active');
     });
+    buttonTools.addEventListener('click', () => {
+      sidetools.classList.toggle('active');
+    });
     
     document.addEventListener('click', (event) => {
       if (!sidebar.contains(event.target) && !hamburger.contains(event.target)) {
         sidebar.classList.remove('active');
+      }
+      if (!sidetools.contains(event.target) && !buttonTools.contains(event.target)) {
+        sidetools.classList.remove('active');
       }
     });
   

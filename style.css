@@ -156,7 +156,7 @@ html, body {
     position: fixed;
     top: 10px;
     left: 10px;
-    background: rgba(0, 0, 0, 0.7);
+    border: 1px dashed rgba(0, 0, 0, 0.7);
     padding: 10px 15px;
     border-radius: 5px;
     z-index: 100;
@@ -215,6 +215,32 @@ button:hover {
     height: 100%;
 }
 
+
+#sidetools {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 250px;
+    height: 100%;
+    background: rgba(190, 208, 224, 0.8);
+    color: #000;
+    padding: 20px;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    z-index: 500;
+    overflow-y: auto;
+    transition: transform 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+
+#sidetools h2 {
+    margin-top: 0;
+    font-size: 20px;
+}
+
+
 #sidebar {
     display: flex;
     flex-direction: column;
@@ -248,9 +274,25 @@ button:hover {
     background: #333;
     color: #fff;
     border: none;
-    padding: 6px 10px 8px;
+    padding: 7px 8px 4px;
     cursor: pointer;
     font-size: 20px;
+    box-sizing: border-box;
+}
+
+#button-tools {
+    display: none;
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 400;
+    background: #333;
+    color: #fff;
+    border: none;
+    padding: 7px 8px 4px;
+    cursor: pointer;
+    font-size: 20px;
+    box-sizing: border-box;
 }
 
 /* Em telas menores que 1200px */
@@ -261,12 +303,19 @@ button:hover {
     #sidebar {
         transform: translateX(100%);
     }
+    #sidetools {
+        transform: translateX(-100%);
+    }
     /* Mostra a sidebar quando ativa */
-    #sidebar.active {
+    #sidebar.active,
+    #sidetools.active {
         transform: translateX(0);
     }
     /* Exibe o botão hamburger */
     #hamburger {
+        display: block;
+    }
+    #button-tools {
         display: block;
     }
 
@@ -411,3 +460,112 @@ h4 {
 .delete-room-btn:hover {
     background-color: #c82333;
 }
+
+
+
+
+
+/* Estilos para a exibição de detalhes do país */
+
+#country {
+    overflow-y: auto;
+    height: calc(100% - 80px);
+  }
+  
+
+  #country h3 {
+    display: block;
+    margin: 0 0 5px 0;
+    font-size: 18px;
+    color: #fff;
+    cursor: pointer;
+}
+
+
+  #country h4 {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    color: rgb(104, 155, 209);
+    font-size: 16px;
+  }
+  
+  .player-name {
+    font-size: 14px;
+    color: rgb(68, 170, 105);
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-style: italic;
+  }
+
+  .country-info {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .country-stats p {
+    margin: 5px 0;
+    font-size: 14px;
+  }
+  
+  .military-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .military-stat {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 14px;
+  }
+  
+  .progress-bar {
+    height: 8px;
+    flex-grow: 1;
+    background-color: #eee;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  
+  .progress-fill {
+    height: 100%;
+    background-color: #4caf50;
+    border-radius: 4px;
+  }
+  
+  .alliances-list, .borders-list {
+    list-style: none;
+    padding: 0;
+    margin: 5px 0;
+  }
+  
+  .alliances-list li, .borders-list li {
+    padding: 5px 0;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  
+  .borders-list li {
+    margin-bottom: 5px;
+  }
+  
+  .borders-list li.enabled .border-status {
+    color: #4caf50;
+  }
+  
+  .borders-list li.disabled .border-status {
+    color: #f44336;
+  }
+  
+  .border-type {
+    color: #aaa;
+    font-style: italic;
+  }
+  
+  .border-status {
+    font-weight: bold;
+  }

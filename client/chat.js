@@ -102,6 +102,8 @@ function displayChatHistory(messages) {
 
 // Alterar o modo de chat (público ou privado)
 function switchChatMode(mode) {
+  if (state.currentChatMode === mode) return;
+
   console.log(`Alterando modo de chat para: ${mode}`);
   state.currentChatMode = mode;
   
@@ -149,13 +151,16 @@ function updatePlayerList(players) {
     publicItem.classList.add('active');
   }
   
-  // CORREÇÃO: Adiciona o event listener diretamente ao elemento
-  publicItem.addEventListener('click', () => {
-    switchChatMode('public');
-  });
-  
   playerList.appendChild(publicItem);
   
+  playerList.addEventListener('click', (e) => {
+    if (e.target.tagName === 'LI' && e.target.classList.contains('chat-option')) {
+      e.stopPropagation();
+      const clickedName = e.target.textContent.split(' (')[0];
+      switchChatMode(clickedName === 'Público' ? 'public' : clickedName);
+    }
+  });
+
   // Adiciona os jogadores
   players.forEach(player => {
     const username = player.split(' (')[0]; // Extrai o nome sem o país
@@ -166,11 +171,6 @@ function updatePlayerList(players) {
       if (state.currentChatMode === username) {
         li.classList.add('active');
       }
-      
-      // CORREÇÃO: Adiciona o event listener diretamente ao elemento
-      li.addEventListener('click', () => {
-        switchChatMode(username);
-      });
       
       playerList.appendChild(li);
     } else {
@@ -217,8 +217,8 @@ function updatePlayerList(players) {
       // Atualiza a expressão de preenchimento
       state.map.setPaintProperty('country-fills', 'fill-color', [
         'case',
-        ['==', ['get', 'name_en'], state.myCountry], 'rgba(255, 220, 0, 0.8)',
-        ['in', ['get', 'name_en'], ['literal', otherCountries]], 'rgba(0, 200, 50, 0.8)',
+        ['==', ['get', 'name_en'], state.myCountry], 'rgba(255, 213, 0, 0.9)',
+        ['in', ['get', 'name_en'], ['literal', state.players.map(p => p.match(/\((.*)\)/)?.[1] || '')]], 'rgba(132, 93, 238, 0.9)',
         'rgba(30, 50, 70, 0)'
       ]);
       

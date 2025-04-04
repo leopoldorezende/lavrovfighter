@@ -4900,49 +4900,6 @@
               }
             ]
           },
-          "Croatia": {
-            "name": "Croácia",
-            "population": {
-              "value": 4000000,
-              "unit": "pessoas"
-            },
-            "gdp": {
-              "value": 70,
-              "unit": "bilhões USD"
-            },
-            "treasury": {
-              "value": 15,
-              "unit": "bilhões USD"
-            },
-            "researchDevelopment": {
-              "value": 5,
-              "unit": "escala 0-10"
-            },
-            "happiness": {
-              "value": 6.4,
-              "unit": "escala 0-10"
-            },
-            "military": {
-              "navy": 15,
-              "airforce": 20,
-              "army": 25,
-              "space": 0
-            },
-            "economicAlliances": ["EU"],
-            "militaryAlliances": ["NATO"],
-            "borders": [
-              {
-                "country": "Slovenia",
-                "type": "land",
-                "enabled": true
-              },
-              {
-                "country": "Serbia",
-                "type": "land",
-                "enabled": true
-              }
-            ]
-          },
             "Albania": {
               "name": "Albânia",
               "population": {

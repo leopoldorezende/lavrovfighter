@@ -2,6 +2,7 @@
 
 import { state } from './state.js';
 import { loadCountriesData, loadCountriesCoordinates, getMapboxToken } from './api.js';
+import { displayCountryDetails } from './country-details.js';
 
 // Variável global para armazenar os dados de coordenadas dos países
 let countriesCoordinates = {
@@ -52,11 +53,11 @@ async function initializeMap(username) {
         'paint': {
           'fill-color': [
             'case',
-            ['==', ['get', 'name_en'], state.myCountry], 'rgba(255, 220, 0, 0.8)',
-            ['in', ['get', 'name_en'], ['literal', state.players.map(p => p.match(/\((.*)\)/)?.[1] || '')]], 'rgba(0, 200, 50, 0.8)',
+            ['==', ['get', 'name_en'], state.myCountry], 'rgba(255, 213, 0, 0.9)',
+            ['in', ['get', 'name_en'], ['literal', state.players.map(p => p.match(/\((.*)\)/)?.[1] || '')]], 'rgba(132, 93, 238, 0.9)',
             'rgba(30, 50, 70, 0)'
           ],
-          'fill-opacity': 0.8
+          'fill-opacity': 0.9
         }
       });
 
@@ -107,6 +108,8 @@ async function initializeMap(username) {
         if (state.myCountry) {
           console.log('Centralizando automaticamente no país do jogador:', state.myCountry);
           centerMapOnCountry(state.myCountry);
+          // Exibe detalhes do país do jogador
+          displayCountryDetails(state.myCountry);
         } else {
           console.log('País do jogador não definido, usando visão padrão do mapa');
         }
@@ -137,6 +140,9 @@ function addCountryClickHandler() {
         // Verifica se o país existe no countriesData
         if (countriesData && countriesData[clickedCountry]) {
           centerMapOnCountry(clickedCountry);
+          
+          // Exibe os detalhes do país clicado
+          displayCountryDetails(clickedCountry);
         } else {
           console.log(`País ${clickedCountry} não encontrado no countriesData`);
         }

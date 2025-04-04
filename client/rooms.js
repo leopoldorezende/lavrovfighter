@@ -92,7 +92,7 @@ function updateRoomInfo(roomData) {
   if (!roomData) return;
   
   // Atualiza o nome da sala no cabeçalho
-  currentRoomDisplay.textContent = `Sala: ${roomData.name}`;
+  currentRoomDisplay.textContent = roomData.name;
   
   // Atualiza detalhes da sala na aba de informações
   document.getElementById('room-name-display').textContent = roomData.name;

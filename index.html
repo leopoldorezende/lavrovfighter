@@ -31,17 +31,27 @@
     </div>
 
     <div id="game-screen" style="display: none;">
-        <div class="room-info">
-            <span id="current-room-display">Sala: </span>
-            <button id="exit-room-button">Sair da Sala</button>
-        </div>
+
         <div id="map"></div>
 
-        <button id="hamburger">&#9776;</button>
+
+        <button id="button-tools"><span class="material-icons">menu</span></button>
+        
+        <button id="hamburger"><span class="material-icons">public</span></button>
+
+        <div id="sidetools">
+            <div class="room-info">
+                <span id="current-room-display"></span>
+                <button id="exit-room-button">Sair da Sala</button>
+            </div>
+        </div>
 
         <div id="sidebar">
             <div class="tabs">
-                <div class="tab active" data-target="chat">
+                <div class="tab active" data-target="country">
+                  <span class="material-icons">map</span>
+                </div>
+                <div class="tab" data-target="chat">
                   <span class="material-icons">chat</span>
                 </div>
                 <div class="tab" data-target="info">
@@ -49,7 +59,11 @@
                 </div>
             </div>
               
-            <div id="chat" class="tab-content active">
+            <div id="country" class="tab-content active">
+                <div id="country-details"></div>
+            </div>
+
+            <div id="chat" class="tab-content">
                 <h4 id="you"></h4>
                 <div class="chat-section">
                     <ul id="player-list"></ul>
@@ -64,7 +78,7 @@
             </div>
 
             <div id="info" class="tab-content">
-                <h3>Informações da Sala</h3>
+                <h4>Informações da Sala</h4>
                 <div id="room-details">
                     <p><strong>Nome da sala:</strong> <span id="room-name-display"></span></p>
                     <p><strong>Criador:</strong> <span id="room-owner-display"></span></p>
