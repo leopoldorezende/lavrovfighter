@@ -1,0 +1,145 @@
+{
+    "indicadores": {
+        "pib": 0,
+        "pibPerCapita": 0,
+        "idh": 0,
+        "popularidade": 0,
+        
+        "saldoTesouro": 0,
+        "inflacao": 0,
+
+        "arrecadacao": {
+            "emissaoTitulosBase": "ajuste",
+            "impostoConsumo": "ajuste",
+            "impostoImportação": "ajuste"
+        },
+        "despesas": {
+            "dividaInterna": 0,
+            "servicosPublicos": "ajuste",
+            "infraestrutura": "ajuste",
+            "pesquisaDesenvolvimento": "ajuste",
+            "defesa": {
+                "exercito": "ajuste",
+                "marinha": "ajuste",
+                "aeronautica": "ajuste",
+                "misseis": "ajuste",
+                "nuclear": "ajuste"
+            }
+        },
+        "producao": {
+            "commodities": 0,
+            "manufatura": 0,
+            "defesa": 0
+        },
+        "exportacoes": {
+            "commodities": [
+                {"valor": 0, "pais": "nomePais"},
+                {"valor": 0, "pais": "nomePais"}
+            ],
+            "manufatura": [
+                {"valor": 0, "pais": "nomePais"},
+                {"valor": 0, "pais": "nomePais"}
+            ],
+            "defesa": [
+                {"valor": 0, "pais": "nomePais"},
+                {"valor": 0, "pais": "nomePais"}
+            ]
+        },
+        "importacoes": {
+            "commodities": [
+                {"valor": 0, "pais": "nomePais"},
+                {"valor": 0, "pais": "nomePais"}
+            ],
+            "manufatura": [
+                {"valor": 0, "pais": "nomePais"},
+                {"valor": 0, "pais": "nomePais"}
+            ],
+            "defesa": [
+                {"valor": 0, "pais": "nomePais"},
+                {"valor": 0, "pais": "nomePais"}
+            ]
+        }
+    },
+
+    "acoes": {
+        "emitirTitulosExtras": {},
+        "acordoExportacao": {},
+        "acordoImportacao": {},
+        "compraMilitarExtrangeiro": {}
+    },
+
+   "calculos": {
+    "variaveis": {
+        "_populacao": "valor fixado por país ou atualizado por crescimento populacional anual"
+    },
+
+    "pib": "pib = producaoTotalInterna + consumo + gastosGovernamentais + totalExportacoes - totalImportacoes",
+    "pibPerCapita": "pibPerCapita = pib / _populacao",
+
+    "idh": {
+        "calculo": "idh = idh + (servicosPublicos / pib) * 0.02"
+    },
+
+    "popularidade": "popularidade = popularidade + ((idh - idh) * 100) - max(0, inflacao - 6) * 2",
+
+    "saldoTesouro": "saldoTesouro = arrecadacaoTotal - despesasTotais + emitirTitulosExtras.valorEmitido",
+
+    "inflacao": {
+        "calculo": "inflacao = inflacao + ((despesasTotais - arrecadacaoTotal) / pib) * 0.3 + (emitirTitulosExtras.valorEmitido / pib) * 1.2"
+    },
+
+    "arrecadacao": {
+        "impostoConsumo": "impostoConsumo = consumo * impostoConsumo",
+        "impostoImportacao": "impostoImportacao = totalImportacoes * impostoImportação",
+        "arrecadacaoTotal": "arrecadacaoTotal = impostoConsumo + impostoImportacao + emissaoTitulosBase"
+    },
+
+    "despesas": {
+        "dividaInterna": {
+            "aumento": "dividaInterna = dividaInterna + emitirTitulosExtras.valorEmitido",
+            "reducao": "dividaInterna = dividaInterna - min(saldoTesouro * 0.1, dividaInterna)",
+            "juros": "pagamentoJuros = dividaInterna * _taxaJuros"
+        },
+        "despesasTotais": "despesasTotais = servicosPublicos + infraestrutura + pesquisaDesenvolvimento + defesaTotal + pagamentoJuros"
+    },
+
+    "infraestrutura": {
+        "multiplicadorInfraestrutura": "multiplicadorInfraestrutura = 1 + (infraestrutura / pib) * 0.5"
+    },
+
+    "pesquisaDesenvolvimento": {
+        "multiplicadorPesquisa": "multiplicadorPesquisa = 1 + (pesquisaDesenvolvimento / pib) * 0.4"
+    },
+
+    "defesa": {
+        "defesaTotal": "defesaTotal = exercito + marinha + aeronautica + misseis + nuclear"
+    },
+
+    "producao": {
+        "commodities": "commodities = commodities * multiplicadorInfraestrutura * multiplicadorPesquisa",
+        "manufatura": "manufatura = manufatura * multiplicadorInfraestrutura",
+        "defesa": "defesa = defesa * multiplicadorInfraestrutura * multiplicadorPesquisa",
+        "producaoTotalInterna": "producaoTotalInterna = commodities + manufatura + defesa"
+    },
+
+    "exportacoes": {
+        "totalExportacoes": "totalExportacoes = soma(exportacoes.commodities[].valor) + soma(exportacoes.manufatura[].valor) + soma(exportacoes.defesa[].valor)"
+    },
+
+    "importacoes": {
+        "totalImportacoes": "totalImportacoes = soma(importacoes.commodities[].valor) + soma(importacoes.manufatura[].valor) + soma(importacoes.defesa[].valor)"
+    },
+
+    "balancaComercial": "balancaComercial = totalExportacoes - totalImportacoes",
+
+    "consumo": "consumo = (pib * 0.55) * (1 + (popularidade - 50) / 200)",
+
+    "gastosGovernamentais": "gastosGovernamentais = servicosPublicos + infraestrutura + pesquisaDesenvolvimento + defesaTotal",
+
+    "economiaAcoes": {
+        "emitirTitulosExtras": {
+            "formula": "saldoTesouro = saldoTesouro + valorEmitido; dividaInterna = dividaInterna + valorEmitido"
+        }
+    }
+}
+}

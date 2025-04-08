@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Duelo Econômico</title>
+  <style>
+    body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #f0f0f0; }
+    .rodada { font-size: 20px; margin-bottom: 20px; font-weight: bold; }
+    .container { display: flex; gap: 40px; }
+    .player { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 360px; }
+    h2 { margin-top: 0; }
+    .stat { margin: 5px 0; }
+    .score { font-weight: bold; font-size: 1.2em; color: green; }
+    .slider-group { margin-top: 10px; }
+    .slider-group label { display: block; margin: 6px 0 2px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="rodada" id="rodada"></div>
+  <div class="container">
+    <div id="player1" class="player"></div>
+    <div id="player2" class="player"></div>
+  </div>
+
+  <script>
+    const players = [
+      {
+        nome: 'Player 1', caixa: 1_000_000, pib: 1_000_000, pibAnterior: 1_000_000, crescimentoPIB: 2,
+        juros: 5, falido: false, score: 0, popularidade: 50
+      },
+      {
+        nome: 'Player 2', caixa: 1_000_000, pib: 1_000_000, pibAnterior: 1_000_000, crescimentoPIB: 2,
+        juros: 5, falido: false, score: 0, popularidade: 50
+      }
+    ];
+
+    const controles = ['juros'];
+    let turnos = 0;
+
+    function updatePlayer(p) {
+      if (p.falido) return;
+
+      const eficienciaFiscal = 0.05 * (10 - p.juros);
+      const crescimento = eficienciaFiscal * 0.002;
+      p.pib += p.pib * crescimento;
+
+      const arrecadacao = p.crescimentoPIB <= 0 ? p.pib * 0.00005 : p.pib * ((p.crescimentoPIB / 100) * Math.pow(p.juros / 2, 1.5));
+      const receitaJuros = p.caixa * (p.juros / 1000000);
+
+      p.caixa += arrecadacao + receitaJuros;
+
+      // Popularidade cai se juros forem altos, sobe se forem baixos
+      const delta = p.juros - 5;
+        const impacto = -0.5 / (1 + Math.exp(-0.2 * delta)) + 0.25;
+        p.popularidade += impacto;
+
+      // Limita entre 0 e 100
+      p.popularidade = Math.min(100, Math.max(0, p.popularidade));
+
+      if (p.caixa < -500_000) {
+        p.falido = true;
+      }
+    }
+
+    function checarVencedor() {
+      const ativos = players.filter(p => !p.falido);
+      if (ativos.length === 1) {
+        ativos[0].score++;
+        novaRodada();
+      } else if (ativos.length === 0) {
+        novaRodada();
+      }
+    }
+
+    function novaRodada() {
+      for (const p of players) {
+        p.caixa = 1_000_000;
+        p.pib = 1_000_000;
+        p.pibAnterior = 1_000_000;
+        p.crescimentoPIB = 2;
+        p.falido = false;
+        p.popularidade = 50;
+      }
+      turnos = 0;
+    }
+
+    function render() {
+      document.getElementById("rodada").innerText = `Rodada: ${turnos}`;
+      players.forEach((p, i) => {
+        const el = document.getElementById(`player${i + 1}`);
+        const controlsHtml = controles.map(c => `
+          <label>${c.toUpperCase()}: <span id="val-${c}-${i}">${p[c]}</span></label>
+          <input type="range" min="0" max="50" value="${p[c]}" step="1" 
+            onchange="players[${i}].${c} = parseInt(this.value); document.getElementById('val-${c}-${i}').innerText = this.value;" />
+        `).join('');
+
+        el.innerHTML = `
+          <h2>${p.nome}</h2>
+          <div class="stat">Caixa: $${(p.caixa / 1_000_000).toFixed(2)} mi</div>
+          <div class="stat">PIB: $${(p.pib / 1_000_000).toFixed(2)} mi</div>
+          <div class="stat">Crescimento do PIB: ${p.crescimentoPIB.toFixed(2)}%</div>
+          <div class="stat">Popularidade: ${p.popularidade.toFixed(1)}%</div>
+          <div class="stat score">Score: ${p.score}</div>
+          <div class="stat">${p.falido ? '<strong style=\"color:red\">FALIU</strong>' : ''}</div>
+          <div class="slider-group">${controlsHtml}</div>
+        `;
+      });
+    }
+
+    setInterval(() => {
+      turnos++;
+      players.forEach(updatePlayer);
+
+      if (turnos % 90 === 0) {
+        players.forEach(p => {
+          const crescimento = ((p.pib - p.pibAnterior) / p.pibAnterior) * 100;
+          p.crescimentoPIB = crescimento;
+          p.pibAnterior = p.pib;
+        });
+      }
+
+      checarVencedor();
+      render();
+    }, 100);
+  </script>
+</body>
+</html>

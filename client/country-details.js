@@ -1,5 +1,8 @@
-// Importar o state
+// country-details.js
+
+// Importar o state e updateSidetools (mantida a importação caso seja necessária em outros contextos)
 import { state } from './state.js';
+import { updateSidetools } from './economy-updater.js';
 
 // Função para exibir os detalhes do país
 function displayCountryDetails(countryName) {
@@ -12,40 +15,35 @@ function displayCountryDetails(countryName) {
   // Obtém os dados do país selecionado
   const country = state.countriesData[countryName];
   
-  // Ativa a aba de país
-  const tabs = document.querySelectorAll('.tab');
-  const contents = document.querySelectorAll('.tab-content');
-  
-  tabs.forEach(tab => {
-    tab.classList.remove('active');
-    if (tab.getAttribute('data-target') === 'country') {
-      tab.classList.add('active');
-    }
-  });
-  
-  contents.forEach(content => {
-    content.classList.remove('active');
-    if (content.id === 'country') {
-      content.classList.add('active');
-    }
-  });
-  
+  // Em vez de selecionar todas as abas com .tab, selecionamos apenas as da sidebar
+const sidebar = document.getElementById('sidebar');
+const tabs = sidebar.querySelectorAll('.tab');
+const contents = sidebar.querySelectorAll('.tab-content');
+
+tabs.forEach(tab => {
+  tab.classList.remove('active');
+  if (tab.getAttribute('data-target') === 'country') {
+    tab.classList.add('active');
+  }
+});
+
+contents.forEach(content => {
+  content.classList.remove('active');
+  if (content.id === 'country') {
+    content.classList.add('active');
+  }
+});
   // Cria o HTML com as informações do país
   let countryDetailsContainer = document.getElementById('country-details');
   
-  // Verifica se o elemento existe
   if (!countryDetailsContainer) {
     console.error('Elemento #country-details não encontrado no DOM');
-    
-    // Tenta criar o elemento se não existir
     const countryTab = document.getElementById('country');
     if (countryTab) {
       console.log('Criando elemento #country-details dinamicamente');
       const detailsDiv = document.createElement('div');
       detailsDiv.id = 'country-details';
       countryTab.appendChild(detailsDiv);
-      
-      // Atualiza a referência
       countryDetailsContainer = detailsDiv;
     } else {
       console.error('Elemento #country também não encontrado. Não é possível mostrar detalhes do país.');
@@ -59,9 +57,7 @@ function displayCountryDetails(countryName) {
   // Verifica se este país tem um jogador online
   let playerName = null;
   if (state.players && state.players.length > 0) {
-    // Busca um jogador que tenha este país
     for (const player of state.players) {
-      // O formato é "username (country)"
       const match = player.match(/(.+) \((.+)\)/);
       if (match && match[2] === countryName) {
         playerName = match[1];
@@ -76,11 +72,11 @@ function displayCountryDetails(countryName) {
     ${playerName ? `<p class="player-name">Controlado por: <strong>${playerName}</strong></p>` : ''}
     <div class="country-info">
       <div class="country-stats">
-        <p><strong>População:</strong> ${formatValue(country.population)}</p>
-        <p><strong>PIB:</strong> ${formatValue(country.gdp)}</p>
-        <p><strong>Tesouro:</strong> ${formatValue(country.treasury)}</p>
-        <p><strong>P&D:</strong> ${formatValue(country.researchDevelopment)}</p>
-        <p><strong>Felicidade:</strong> ${formatValue(country.happiness)}</p>
+        <p><strong>População:</strong> ${formatNumber(country.population)}</p>
+        <p><strong>PIB:</strong> ${formatValue(country.economy.gdp)} (${country.economy.gdpGrowth}%)</p>
+        <p><strong>Tesouro:</strong> ${formatValue(country.economy.treasury)}</p>
+        <p><strong>IDH:</strong> ${country.hdi}</p>
+        <p><strong>Desemprego:</strong> ${country.economy.unemployment}%</p>
       </div>
       
       <div class="country-military">
@@ -88,10 +84,18 @@ function displayCountryDetails(countryName) {
         ${createMilitaryStats(country.military)}
       </div>
       
+      <div class="country-economy">
+        <h4>Economia</h4>
+        <p><strong>Inflação:</strong> ${country.economy.inflation}%</p>
+        <p><strong>Dívida Pública:</strong> ${country.economy.publicDebtToGdp}% do PIB</p>
+        <p><strong>Taxa de Juros:</strong> ${country.economy.interestRate}%</p>
+        <p><strong>Popularidade:</strong> ${country.economy.popularity}%</p>
+      </div>
+      
       <div class="country-relationships">
         <h4>Alianças</h4>
-        ${createAlliancesList(country.economicAlliances, 'Econômicas')}
-        ${createAlliancesList(country.militaryAlliances, 'Militares')}
+        ${createAlliancesList(country.politics.economicAlliances, 'Econômicas')}
+        ${createAlliancesList(country.politics.militaryAlliances, 'Militares')}
       </div>
       
       <div class="country-borders">
@@ -103,44 +107,51 @@ function displayCountryDetails(countryName) {
   
   // Atualiza o conteúdo na div
   countryDetailsContainer.innerHTML = html;
+  
+  // Removida a chamada a updateSidetools para que a sidetools não seja resetada automaticamente
 }
 
-// Formata valores com unidades
+// Função para formatar números com separadores
+function formatNumber(value) {
+  if (!value && value !== 0) return 'N/A';
+  return new Intl.NumberFormat('pt-BR').format(value);
+}
+
+// Função para formatar valores com unidades
 function formatValue(valueObj) {
   if (!valueObj) return 'N/A';
-  
   if (typeof valueObj === 'object') {
+    if (valueObj.value >= 1000) {
+      return `${(valueObj.value / 1000).toFixed(1)} trilhões ${valueObj.unit || ''}`;
+    }
     return `${valueObj.value} ${valueObj.unit || ''}`;
   }
-  
   return valueObj;
 }
 
 // Cria representação visual do poder militar
 function createMilitaryStats(military) {
   if (!military) return '<p>Informações militares não disponíveis</p>';
-  
   let html = '<div class="military-bars">';
-  
-  for (const [force, value] of Object.entries(military)) {
-    const forceName = {
-      'navy': 'Marinha',
-      'airforce': 'Força Aérea',
-      'army': 'Exército',
-      'space': 'Espacial'
-    }[force] || force;
-    
-    html += `
-      <div class="military-stat">
-        <span>${forceName}</span>
-        <div class="progress-bar">
-          <div class="progress-fill" style="width: ${value}%"></div>
+  const militaryComponents = {
+    'navy': 'Marinha',
+    'airforce': 'Força Aérea',
+    'army': 'Exército',
+    'missiles': 'Mísseis'
+  };
+  for (const [force, label] of Object.entries(militaryComponents)) {
+    if (military[force] !== undefined) {
+      html += `
+        <div class="military-stat">
+          <span>${label}</span>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: ${military[force]}%"></div>
+          </div>
+          <span>${military[force]}/100</span>
         </div>
-        <span>${value}/100</span>
-      </div>
-    `;
+      `;
+    }
   }
-  
   html += '</div>';
   return html;
 }
@@ -150,17 +161,12 @@ function createAlliancesList(alliances, title) {
   if (!alliances || alliances.length === 0) {
     return `<p>Sem alianças ${title.toLowerCase()}</p>`;
   }
-  
   let html = `<p>${title}:</p><ul class="alliances-list">`;
-  
-  alliances.forEach(ally => {
-    // Se tivermos dados do aliado, usamos o nome localizado
-    const allyName = state.countriesData[ally] ? 
-      state.countriesData[ally].name : ally;
-    
-    html += `<li>${allyName}</li>`;
+  alliances.forEach(alliance => {
+    const allyName = alliance.country;
+    const condition = alliance.condition;
+    html += `<li>${allyName} <span class="alliance-condition">(${condition})</span></li>`;
   });
-  
   html += '</ul>';
   return html;
 }
@@ -170,18 +176,12 @@ function createBordersList(borders) {
   if (!borders || borders.length === 0) {
     return '<p>Sem fronteiras</p>';
   }
-  
   let html = '<ul class="borders-list">';
-  
   borders.forEach(border => {
-    // Se tivermos dados do país fronteiriço, usamos o nome localizado
-    const borderCountryName = state.countriesData[border.country] ? 
-      state.countriesData[border.country].name : border.country;
-    
+    const borderCountryName = border.country;
     const borderType = border.type === 'land' ? 'terrestre' : 'marítima';
     const statusClass = border.enabled ? 'enabled' : 'disabled';
     const statusText = border.enabled ? 'aberta' : 'fechada';
-    
     html += `
       <li class="${statusClass}">
         <span class="border-country">${borderCountryName}</span>
@@ -190,7 +190,6 @@ function createBordersList(borders) {
       </li>
     `;
   });
-  
   html += '</ul>';
   return html;
 }

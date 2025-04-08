@@ -4,6 +4,7 @@ import { state } from './state.js';
 import { updateRoomsList, updateRoomInfo } from './rooms.js';
 import { centerMapOnCountry } from './map.js';
 import { displayMessage, displayChatHistory, updatePlayerList } from './chat.js';
+import { updateSidetools } from './economy-updater.js';  // Adicionado para atualizar a sidetools
 
 // Inicializa o socket
 const socket = io();
@@ -136,6 +137,8 @@ function initSocketHandlers() {
 
     // Centraliza o mapa imediatamente após receber o estado
     centerMapOnCountry(state.myCountry);
+    // Atualiza a sidetools para mostrar os dados do país do jogador
+    updateSidetools();
   });
 
   // Eventos de conexão

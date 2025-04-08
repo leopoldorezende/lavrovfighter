@@ -1,0 +1,171 @@
+/* Estilos gerais para a simulação econômica */
+body { 
+  font-family: sans-serif; 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  padding: 20px; 
+  background: #fafafa; 
+  color: #555;
+}
+
+/* Estilo para exibição de rodadas */
+.round { 
+  font-size: 20px; 
+  margin-bottom: 20px; 
+  font-weight: bold; 
+}
+
+/* Container principal dos jogadores */
+.container { 
+  display: flex; 
+  gap: 40px; 
+  flex-wrap: wrap;
+}
+
+/* Estilos para os cards de jogadores */
+.player { 
+  background: #fff; 
+  padding: 20px; 
+  border-radius: 10px; 
+  box-shadow: 0 0 10px rgba(0,0,0,0.1); 
+  width: 360px; 
+}
+
+/* Cabeçalhos */
+h2 { 
+  margin-top: 0; 
+}
+
+ul { 
+  padding: 0;
+  margin: 0;
+}
+
+
+ul li { 
+  padding: 0;
+  margin: 0;
+}
+
+
+/* Estatísticas dos jogadores */
+.stat { 
+  margin: 5px 0; 
+}
+
+/* Grupos de sliders */
+.slider-group { 
+  margin-top: 10px; 
+}
+
+.slider-group label { 
+  display: block; 
+  margin: 6px 0 2px; 
+  font-size: 14px; 
+}
+
+/* Botões */
+button {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: #555;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #aaa;
+}
+
+/* Separadores */
+hr {
+  border-color: #ddd;
+  margin: 15px 0;
+}
+
+/* Área de ações */
+.actions {
+  margin-top: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+#nextTurn {
+  padding: 10px 20px;
+  font-size: 16px;
+  background: #2a6496;
+}
+
+#nextTurn:hover {
+  background: #337ab7;
+}
+
+#autoPlay {
+  padding: 10px 20px;
+  font-size: 16px;
+  background: #6c5b7b;
+}
+
+#autoPlay:hover {
+  background: #7d6a8c;
+}
+
+/* Exibição de data */
+.date {
+  margin-top: 5px;
+  font-size: 12px;
+  color: #888;
+}
+
+/* Classes de cores para valores */
+.positive {
+  color: #4CAF50;
+}
+
+.negative {
+  color: #F44336;
+}
+
+.warning {
+  color: #FFC107;
+}
+
+/* Estilos para a área de sugestões */
+.suggestions {
+  background: #eee;
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: 15px;
+  border-left: 3px solid #4a90e2;
+}
+
+.suggestions h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  color: #4a90e2;
+  font-size: 16px;
+}
+
+.suggestion-item {
+  margin: 8px 0;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+}
+
+.suggestion-item .btn-apply {
+  background: #2a4b8d;
+  font-size: 12px;
+  padding: 4px 8px;
+  margin-left: 8px;
+  border-radius: 3px;
+}
+
+.suggestion-item .btn-apply:hover {
+  background: #3a5fa3;
+}

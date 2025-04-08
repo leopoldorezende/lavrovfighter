@@ -1,97 +1,173 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jogo Multiplayer</title>
-    <link rel="stylesheet" href="style.css">
-    <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
-    <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
-    <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jogo Multiplayer</title>
+  <link rel="stylesheet" href="style.css">
+  <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
 <body>
-    <div id="login-screen">
-        <h2>Digite seu nome</h2>
-        <input type="text" id="username" placeholder="Seu nome">
-        <button id="enterButton">Entrar</button>
+  <div id="login-screen">
+    <h2>BRICS Krieg</h2>
+    <h4>Digite seu nome</h4>
+    <input type="text" id="username" placeholder="Seu nome">
+    <button id="enterButton">Entrar</button>
+  </div>
+
+  <div id="room-selection-screen" style="display: none;">
+    <h2>Salas de Guerra</h2>
+    <div class="room-actions">
+      <input type="text" id="room-name" placeholder="Nome da sala">
+      <button id="create-room-button">Criar Sala</button>
+    </div>
+    <div class="room-list-container">
+      <h3>Disponíveis</h3>
+      <ul id="room-list"></ul>
+      <button id="refresh-rooms-button">Atualizar Lista</button>
+    </div>
+  </div>
+
+  <div id="game-screen" style="display: none;">
+    <div id="map"></div>
+
+    <button id="button-tools"><span class="material-icons">menu</span></button>
+    <button id="hamburger"><span class="material-icons">public</span></button>
+
+
+    <!-- sidetools - barra lateral direita -->
+    <div id="sidetools" class="sidetools">
+    <!-- Nome do país do jogador exibido acima das abas -->
+    <h2 id="player-country-display" class="player-country-display"></h2>
+    
+      <!-- Abas de navegação -->
+      <div class="tabs">
+        <div class="tab active" data-target="economy">
+          <span class="material-icons">monetization_on</span>
+        </div>
+        <div class="tab" data-target="politics">
+          <span class="material-icons">account_balance</span>
+        </div>
+        <div class="tab" data-target="war">
+          <span class="material-icons">military_tech</span>
+        </div>
+      </div>
+
+      <!-- Conteúdo das abas -->
+      <div class="tab-contents">
+        <!-- Aba Economia -->
+        <div id="economy" class="tab-content">
+          <div class="economy-stats">
+            <p>PIB: <span id="gdp-value"></span> (Growth: <span id="gdp-growth"></span>%)</p>
+            <p>Tesouro: <span id="treasury-value"></span></p>
+            <p>Dívida Pública: <span id="debt-value"></span></p>
+            <p>Inflação: <span id="inflation-value"></span></p>
+            <p>Desemprego: <span id="unemployment-value"></span></p>
+            <p>Popularidade: <span id="popularity-value"></span></p>
+          </div>
+          <div class="economy-resources">
+            <p>Commodities: <span id="commodities-value"></span></p>
+            <p>Manufatura: <span id="manufacturing-value"></span></p>
+            <p>Recursos Naturais: <span id="resources-value"></span></p>
+            <p>Nível Tecnológico: <span id="technology-value"></span></p>
+          </div>
+          <div class="economy-parameters">
+            <p>Taxa de Juros: <span id="interest-rate"></span></p>
+            <p>Impostos: <span id="tax-rate"></span></p>
+            <p>Serviços Públicos: <span id="public-services-value"></span></p>
+          </div>
+          <div class="economy-derived">
+            <p>P&D: <span id="research-value"></span></p>
+            <p>Defesa: <span id="defense-value"></span></p>
+            <p>Pagamento da Dívida: <span id="debt-payment-value"></span></p>
+            <p>Despesas do Estado: <span id="state-expenses-value"></span></p>
+          </div>
+          <div class="economy-misc">
+            <p>Emissão de Títulos: <span id="bonds-value"></span></p>
+            <p>Retirada do Caixa: <span id="cash-withdrawal-value"></span></p>
+          </div>
+        </div>
+
+        <!-- Aba Política -->
+        <div id="politics" class="tab-content">
+          <div class="politics-container">
+            <!-- O conteúdo da aba Política será atualizado dinamicamente -->
+          </div>
+        </div>
+
+        <!-- Aba Guerra -->
+        <div id="war" class="tab-content">
+          <div class="military-stats">
+            <h4>Forças Armadas</h4>
+            <p>Exército: <span id="army-value"></span>%</p>
+            <p>Marinha: <span id="navy-value"></span>%</p>
+            <p>Força Aérea: <span id="airforce-value"></span>%</p>
+            <p>Mísseis: <span id="missiles-value"></span>%</p>
+            <p>Capacidade Nuclear: <span id="nuclear-status"></span></p>
+          </div>
+          <div class="war-actions">
+            <h4>Operações Militares</h4>
+            <select id="target-country">
+              <option value="">Selecione um alvo</option>
+            </select>
+            <button class="action-btn danger">Declarar Guerra</button>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div id="room-selection-screen" style="display: none;">
-        <h2>Salas de Guerra</h2>
-        <div class="room-actions">
-            <input type="text" id="room-name" placeholder="Nome da sala">
-            <button id="create-room-button">Criar Sala</button>
+    <div id="sidebar">
+      <div class="tabs">
+        <div class="tab " data-target="country">
+          <span class="material-icons">map</span>
         </div>
-        <div class="room-list-container">
-            <h3>Disponíveis</h3>
-            <ul id="room-list"></ul>
-            <button id="refresh-rooms-button">Atualizar Lista</button>
+        <div class="tab active" data-target="chat">
+          <span class="material-icons">chat</span>
         </div>
+        <div class="tab" data-target="info">
+          <span class="material-icons">info</span>
+        </div>
+      </div>
+
+      <div id="country" class="tab-content active">
+        <div id="country-details"></div>
+      </div>
+
+      <div id="chat" class="tab-content">
+        <h4 id="you"></h4>
+        <div class="chat-section">
+          <ul id="player-list"></ul>
+          <div id="chat-container">
+            <div id="chat-messages"></div>
+            <div class="chat-sendgroup">
+              <input type="text" id="chat-input" placeholder="Digite sua mensagem">
+              <button id="chat-send">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="info" class="tab-content">
+        <h4>Informações da Sala</h4>
+        <div id="room-details">
+          <p><strong>Nome da sala:</strong> <span id="room-name-display"></span></p>
+          <div class="room-info">
+            <button id="exit-room-button">Sair da Sala</button>
+          </div>
+          <p><strong>Criador:</strong> <span id="room-owner-display"></span></p>
+          <p><strong>Jogadores:</strong> <span id="room-players-count"></span></p>
+          <p><strong>Criada em:</strong> <span id="room-created-at"></span></p>
+        </div>
+        <div id="room-admin-controls"></div>
+      </div>
     </div>
+  </div>
 
-    <div id="game-screen" style="display: none;">
-
-        <div id="map"></div>
-
-
-        <button id="button-tools"><span class="material-icons">menu</span></button>
-        
-        <button id="hamburger"><span class="material-icons">public</span></button>
-
-        <div id="sidetools">
-            <div class="room-info">
-                <span id="current-room-display"></span>
-                <button id="exit-room-button">Sair da Sala</button>
-            </div>
-        </div>
-
-        <div id="sidebar">
-            <div class="tabs">
-                <div class="tab active" data-target="country">
-                  <span class="material-icons">map</span>
-                </div>
-                <div class="tab" data-target="chat">
-                  <span class="material-icons">chat</span>
-                </div>
-                <div class="tab" data-target="info">
-                  <span class="material-icons">info</span>
-                </div>
-            </div>
-              
-            <div id="country" class="tab-content active">
-                <div id="country-details"></div>
-            </div>
-
-            <div id="chat" class="tab-content">
-                <h4 id="you"></h4>
-                <div class="chat-section">
-                    <ul id="player-list"></ul>
-                    <div id="chat-container">
-                        <div id="chat-messages"></div>
-                        <div class="chat-sendgroup">
-                            <input type="text" id="chat-input" placeholder="Digite sua mensagem">
-                            <button id="chat-send">Send</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="info" class="tab-content">
-                <h4>Informações da Sala</h4>
-                <div id="room-details">
-                    <p><strong>Nome da sala:</strong> <span id="room-name-display"></span></p>
-                    <p><strong>Criador:</strong> <span id="room-owner-display"></span></p>
-                    <p><strong>Jogadores:</strong> <span id="room-players-count"></span></p>
-                    <p><strong>Criada em:</strong> <span id="room-created-at"></span></p>
-                </div>
-                <div id="room-admin-controls"></div>
-            </div>
-        </div>
-    </div>
-
-    <script src="/socket.io/socket.io.js"></script>
-    <!-- Substitua o antigo script por módulos -->
-    <script type="module" src="client/app.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <!-- Substitua o antigo script por módulos -->
+  <script type="module" src="client/app.js"></script>
 </body>
 </html>

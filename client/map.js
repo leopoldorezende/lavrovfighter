@@ -13,6 +13,19 @@ let countriesCoordinates = {
 // Inicializar o mapa
 async function initializeMap(username) {
   try {
+    // Se o mapa já foi inicializado, apenas atualize-o
+    if (state.map && state.map.loaded()) {
+      console.log('Mapa já inicializado, atualizando apenas');
+      
+      // Centraliza no país do jogador se disponível
+      if (state.myCountry) {
+        setTimeout(() => {
+          centerMapOnCountry(state.myCountry);
+        }, 500);
+      }
+      return;
+    }
+    
     // Carrega as coordenadas dos países primeiro
     const coordinates = await loadCountriesCoordinates();
     if (coordinates) {
@@ -24,6 +37,12 @@ async function initializeMap(username) {
     const token = await getMapboxToken();
     mapboxgl.accessToken = token;
     
+    // Limpa o container do mapa para evitar warnings
+    const mapContainer = document.getElementById('map');
+    if (mapContainer) {
+      mapContainer.innerHTML = '';
+    }
+    
     state.map = new mapboxgl.Map({
       container: 'map',
       style: 'mapbox://styles/leopoldorezende/cklv3mqga2ki517m1zqftm5vp',
@@ -32,72 +51,101 @@ async function initializeMap(username) {
       language: "Portuguese",
       center: [0, 0],
       zoom: 1.5,
-      maxZoom: 6,
+      maxZoom: 5.5,
       // maxBounds: [[-180, -90], [180, 90]]
     });
 
     state.map.on('load', () => {
       console.log('Mapa carregado com sucesso');
-      state.map.addSource('countries', {
-        type: 'vector',
-        url: 'mapbox://mapbox.country-boundaries-v1'
-      });
+      
+      // Verifica se a fonte já existe antes de tentar adicioná-la
+      if (!state.map.getSource('countries')) {
+        state.map.addSource('countries', {
+          type: 'vector',
+          url: 'mapbox://mapbox.country-boundaries-v1'
+        });
 
-      // Adiciona camada de preenchimento para os países
-      state.map.addLayer({
-        'id': 'country-fills',
-        'type': 'fill',
-        'source': 'countries',
-        'source-layer': 'country_boundaries',
-        // 'filter': ['in', ['get', 'worldview'], ['literal', ['IN', 'all']]],
-        'paint': {
-          'fill-color': [
+        // Adiciona camada de preenchimento para os países
+        state.map.addLayer({
+          'id': 'country-fills',
+          'type': 'fill',
+          'source': 'countries',
+          'source-layer': 'country_boundaries',
+          // 'filter': ['in', ['get', 'worldview'], ['literal', ['IN', 'all']]],
+          'paint': {
+            'fill-color': [
+              'case',
+              ['==', ['get', 'name_en'], state.myCountry], 'rgba(255, 213, 0, 0.9)',
+              ['in', ['get', 'name_en'], ['literal', state.players.map(p => p.match(/\((.*)\)/)?.[1] || '')]], 'rgba(132, 93, 238, 0.9)',
+              'rgba(30, 50, 70, 0)'
+            ],
+            'fill-opacity': 0.9
+          }
+        });
+
+
+        // Adiciona camada de borda para os países ativos
+        state.map.addLayer({
+          'id': 'country-borders',
+          'type': 'line',
+          'source': 'countries',
+          'source-layer': 'country_boundaries',
+          // 'filter': ['in', ['get', 'worldview'], ['literal', ['IN', 'all']]],
+          'layout': {},
+          'paint': {
+            'line-color': '#333333',
+            'line-width': 1,
+            'line-opacity': [
+              'case',
+              ['==', ['get', 'name_en'], state.myCountry], 1,
+              ['in', ['get', 'name_en'], ['literal', state.players.map(p => p.match(/\((.*)\)/)?.[1] || '')]], 1,
+              0
+            ]
+          }
+        });
+      } else {
+        // Se a fonte já existe, apenas atualiza as camadas existentes
+        console.log('Fonte "countries" já existe, atualizando camadas');
+        
+        // Atualiza a expressão de preenchimento
+        if (state.map.getLayer('country-fills')) {
+          state.map.setPaintProperty('country-fills', 'fill-color', [
             'case',
             ['==', ['get', 'name_en'], state.myCountry], 'rgba(255, 213, 0, 0.9)',
             ['in', ['get', 'name_en'], ['literal', state.players.map(p => p.match(/\((.*)\)/)?.[1] || '')]], 'rgba(132, 93, 238, 0.9)',
             'rgba(30, 50, 70, 0)'
-          ],
-          'fill-opacity': 0.9
+          ]);
         }
-      });
-
-
-      // Adiciona camada de borda para os países ativos
-      state.map.addLayer({
-        'id': 'country-borders',
-        'type': 'line',
-        'source': 'countries',
-        'source-layer': 'country_boundaries',
-        // 'filter': ['in', ['get', 'worldview'], ['literal', ['IN', 'all']]],
-        'layout': {},
-        'paint': {
-          'line-color': '#333333',
-          'line-width': 1,
-          'line-opacity': [
+        
+        // Atualiza a expressão de borda
+        if (state.map.getLayer('country-borders')) {
+          state.map.setPaintProperty('country-borders', 'line-opacity', [
             'case',
             ['==', ['get', 'name_en'], state.myCountry], 1,
             ['in', ['get', 'name_en'], ['literal', state.players.map(p => p.match(/\((.*)\)/)?.[1] || '')]], 1,
             0
-          ]
+          ]);
         }
-      });
+      }
       
       // Remove labels desnecessários
       const layers = state.map.getStyle().layers;
-      layers.forEach(layer => {
-        if (layer.type === 'symbol' && !layer.id.includes('country')) {
-          state.map.setLayoutProperty(layer.id, 'visibility', 'none');
-        }
-        if (layer.id.includes('road') || layer.id.includes('street') || layer.id.includes('highway')) {
-          state.map.setLayoutProperty(layer.id, 'visibility', 'none');
-        }
-        if (layer.id.includes('admin') && 
-           (layer.id.includes('state') || 
-           layer.id.includes('province') || 
-           layer.id.toLowerCase().includes('admin-1'))) {
-              state.map.setLayoutProperty(layer.id, 'visibility', 'none');
-        }
-      });
+      if (layers) {
+        layers.forEach(layer => {
+          if (layer && layer.type === 'symbol' && layer.id && !layer.id.includes('country')) {
+            state.map.setLayoutProperty(layer.id, 'visibility', 'none');
+          }
+          if (layer && layer.id && (layer.id.includes('road') || layer.id.includes('street') || layer.id.includes('highway'))) {
+            state.map.setLayoutProperty(layer.id, 'visibility', 'none');
+          }
+          if (layer && layer.id && layer.id.includes('admin') && 
+             (layer.id.includes('state') || 
+             layer.id.includes('province') || 
+             layer.id.toLowerCase().includes('admin-1'))) {
+                state.map.setLayoutProperty(layer.id, 'visibility', 'none');
+          }
+        });
+      }
 
       // Adiciona handler de clique para os países
       addCountryClickHandler();
@@ -110,6 +158,25 @@ async function initializeMap(username) {
           centerMapOnCountry(state.myCountry);
           // Exibe detalhes do país do jogador
           displayCountryDetails(state.myCountry);
+
+          const sidebar = document.getElementById('sidebar');
+          const tabs = sidebar.querySelectorAll('.tab');
+          const contents = sidebar.querySelectorAll('.tab-content');
+
+          tabs.forEach(tab => {
+            tab.classList.remove('active');
+            if (tab.getAttribute('data-target') === 'chat') {
+              tab.classList.add('active');
+            }
+          });
+
+          contents.forEach(content => {
+            content.classList.remove('active');
+            if (content.id === 'chat') {
+              content.classList.add('active');
+            }
+          });
+
         } else {
           console.log('País do jogador não definido, usando visão padrão do mapa');
         }
@@ -120,7 +187,8 @@ async function initializeMap(username) {
   }
 }
 
-// Adiciona handler para clique nos países
+// Em map.js, atualização na função addCountryClickHandler:
+
 function addCountryClickHandler() {
   // Carrega dados dos países para validar cliques
   loadCountriesData().then(countriesData => {
@@ -129,45 +197,48 @@ function addCountryClickHandler() {
     // Adiciona o handler de evento para clique no mapa
     state.map.on('click', (e) => {
       e.originalEvent.stopPropagation();
-    
+      
+      // Apenas manipula a sidebar; a sidetools permanece inalterada
       const sidebar = document.getElementById('sidebar');
-      const sidetools = document.getElementById('sidetools');
-    
-      const sidebarAberta = sidebar.classList.contains('active');
-      const sidetoolsAberto = sidetools.classList.contains('active');
-    
-      // Se qualquer um dos dois estiver aberto, só fecha e para tudo
-      if (sidebarAberta || sidetoolsAberto) {
-        sidebar.classList.remove('active');
-        sidetools.classList.remove('active');
-        return;
-      }
-    
+      
+      // Obtem os features clicados na camada 'country-fills'
       const features = state.map.queryRenderedFeatures(e.point, {
         layers: ['country-fills']
       });
-    
+      
       if (features.length > 0) {
         const clickedCountry = features[0].properties.name_en;
-    
+        
         if (state.countriesData && state.countriesData[clickedCountry]) {
           console.log(`País válido clicado: ${clickedCountry}`);
           centerMapOnCountry(clickedCountry);
           displayCountryDetails(clickedCountry);
-    
-          // Ativa aba "País"
-          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-          document.querySelector('.tab[data-target="country"]').classList.add('active');
-          document.getElementById('country').classList.add('active');
-    
-          // Abre a sidebar
-          sidebar.classList.add('active');
+          
+          // Dispara um evento customizado para notificar que um país foi selecionado
+          document.dispatchEvent(new CustomEvent('countrySelected', { 
+            detail: { country: clickedCountry }
+          }));
+          
+          // Atualiza somente as abas da sidebar (não afeta a sidetools)
+          const sidebarTabs = document.querySelectorAll('#sidebar .tab');
+          const sidebarContents = document.querySelectorAll('#sidebar .tab-content');
+          sidebarTabs.forEach(t => t.classList.remove('active'));
+          sidebarContents.forEach(c => c.classList.remove('active'));
+          const countryTab = document.querySelector('#sidebar .tab[data-target="country"]');
+          const countryContent = document.getElementById('country');
+          if (countryTab) countryTab.classList.add('active');
+          if (countryContent) countryContent.classList.add('active');
+          
+          // Abre a sidebar se ainda não estiver visível
+          if (window.innerWidth <= 1200) {
+            sidebar.classList.add('active');
+          }
         }
       }
     });
   });
 }
+
 
 // Obter o centro de um país
 function getCountryCenter(country) {

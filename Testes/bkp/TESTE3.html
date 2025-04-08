@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Duelo Econômico</title>
+  <style>
+    body { 
+      font-family: sans-serif; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      padding: 20px; 
+      background: #fafafa; 
+      color: #555;
+    }
+    .rodada { 
+      font-size: 20px; 
+      margin-bottom: 20px; 
+      font-weight: bold; 
+    }
+    .container { 
+      display: flex; 
+      gap: 40px; 
+      flex-wrap: wrap;
+    }
+    .player { 
+      background: #fff; 
+      padding: 20px; 
+      border-radius: 10px; 
+      box-shadow: 0 0 10px rgba(0,0,0,0.1); 
+      width: 360px; 
+    }
+    h2 { 
+      margin-top: 0; 
+    }
+    .stat { 
+      margin: 5px 0; 
+    }
+    .slider-group { 
+      margin-top: 10px; 
+    }
+    .slider-group label { 
+      display: block; 
+      margin: 6px 0 2px; 
+      font-size: 14px; 
+    }
+    button {
+      margin-top: 10px;
+      padding: 8px 12px;
+      background: #555;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #aaa;
+    }
+    hr {
+      border-color: #ddd;
+      margin: 15px 0;
+    }
+    .actions {
+      margin-top: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+    }
+    #proximoTurno {
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #2a6496;
+    }
+    #proximoTurno:hover {
+      background: #337ab7;
+    }
+    #autoPlay {
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #6c5b7b;
+    }
+    #autoPlay:hover {
+      background: #7d6a8c;
+    }
+    .data {
+      margin-top: 5px;
+      font-size: 12px;
+      color: #888;
+    }
+    .positive {
+      color: #4CAF50;
+    }
+    .negative {
+      color: #F44336;
+    }
+    .warning {
+      color: #FFC107;
+    }
+    .sugestoes {
+      background: #eee;
+      border-radius: 6px;
+      padding: 12px;
+      margin-top: 15px;
+      border-left: 3px solid #4a90e2;
+    }
+    .sugestoes h3 {
+      margin-top: 0;
+      margin-bottom: 8px;
+      color: #4a90e2;
+      font-size: 16px;
+    }
+    .sugestao-item {
+      margin: 8px 0;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+    }
+    .sugestao-item .btn-aplicar {
+      background: #2a4b8d;
+      font-size: 12px;
+      padding: 4px 8px;
+      margin-left: 8px;
+      border-radius: 3px;
+    }
+    .sugestao-item .btn-aplicar:hover {
+      background: #3a5fa3;
+    }
+  </style>
+</head>
+<body>
+  <div class="rodada" id="rodada">Rodada: 0 (Dia 1)</div>
+  <div class="data" id="data">Data: 01/01/2025</div>
+  <div class="container">
+    <div id="player1" class="player"></div>
+    <div id="player2" class="player"></div>
+    <div id="player3" class="player"></div>
+  </div>
+  
+  <div class="actions">
+    <button id="proximoTurno" onclick="avancarTurno()">Próximo Turno</button>
+    <button id="autoPlay" onclick="toggleAutoPlay()">Auto Play (1 turno/seg)</button>
+  </div>
+
+  <script>
+    // Constantes econômicas baseadas na França
+    const PIB_FRANCA = 2500000000000; // 2.5 trilhões de euros
+    const DIVIDA_PERCENTUAL_PIB = 0.98; // 98% do PIB (França)
+    const INFLACAO_BASE = 2.4; // Inflação base em %
+    const CRESCIMENTO_PIB_BASE = 1.5; // Crescimento base do PIB em %
+    const JUROS_BASE = 3.5; // Taxa de juros base em %
+    const INVESTIMENTO_PUBLICO_BASE = 21; // Gasto público como % do PIB (França)
+    const CARGA_TRIBUTARIA_BASE = 46; // Carga tributária base da França (46% do PIB)
+
+
+    // Constantes econômicas para o Peru
+    const PIB_PERU = 240000000000; // 240 bilhões de euros (aproximadamente, convertido de USD)
+    const DIVIDA_PERCENTUAL_PIB_PERU = 0.37; // 37% do PIB (Peru)
+    const INFLACAO_BASE_PERU = 3.2; // Inflação base do Peru em %
+    const CRESCIMENTO_PIB_BASE_PERU = 2.2; // Crescimento base do PIB em % (média histórica Peru)
+    const JUROS_BASE_PERU = 7.25; // Taxa de juros base em % (mais alta que a França)
+    const INVESTIMENTO_PUBLICO_BASE_PERU = 19; // Gasto público como % do PIB (Peru)
+    const CARGA_TRIBUTARIA_BASE_PERU = 16.5; // Carga tributária do Peru (16.5% do PIB - bem menor que a França)
+    const DESEMPREGO_BASE_PERU = 6.8; // Taxa de desemprego do Peru
+
+
+    // Variáveis para simulação
+    let autoPlayInterval = null;
+    let autoPlayActive = false;
+    const INTERVALO_ATUALIZACAO_TRIMESTRAL = 90; // 90 dias = 1 trimestre
+    let contadorAtualizacaoSugestoes = 0; // Contador para atualização das sugestões
+
+    // Funções de onda para adicionar ruído e ciclos econômicos
+    function ondaEconomica(amplitude, frequencia, fase, turno) {
+      return amplitude * Math.sin((turno/frequencia) + fase);
+    }
+    
+    function ruido(amplitude) {
+      return (Math.random() * 2 - 1) * amplitude;
+    }
+
+    // Definição dos jogadores com valores franceses
+    const players = [
+      {
+        nome: 'Teste 1', 
+        caixa: PIB_FRANCA * 0.05, 
+        pib: PIB_FRANCA, 
+        pibAnterior: PIB_FRANCA,
+        pibTrimestralAnterior: PIB_FRANCA,
+        crescimentoPIB: CRESCIMENTO_PIB_BASE, // Apenas para exibição
+        crescimentoPIBIntrinseco: CRESCIMENTO_PIB_BASE, // Valor base constante usado nos cálculos
+        crescimentoDiario: CRESCIMENTO_PIB_BASE / 365,
+        juros: JUROS_BASE, 
+        investimentoPublico: INVESTIMENTO_PUBLICO_BASE,
+        cargaTributaria: CARGA_TRIBUTARIA_BASE,
+        popularidade: 50, 
+        dividaPublica: PIB_FRANCA * DIVIDA_PERCENTUAL_PIB,
+        inflacao: INFLACAO_BASE,
+        desemprego: 7.1, // Taxa de desemprego da França
+        historicoJuros: Array(10).fill(JUROS_BASE),
+        historicoInvestimento: Array(10).fill(INVESTIMENTO_PUBLICO_BASE),
+        historicoInflacao: Array(12).fill(INFLACAO_BASE),
+        historicoCrescimento: Array(4).fill(CRESCIMENTO_PIB_BASE),
+        historicoCargaTributaria: Array(10).fill(CARGA_TRIBUTARIA_BASE),
+        sugestoes: {
+          juros: { valor: JUROS_BASE, mensagem: "Mantenha a taxa de juros atual." },
+          investimento: { valor: INVESTIMENTO_PUBLICO_BASE, mensagem: "Mantenha o investimento público atual." },
+          cargaTributaria: { valor: CARGA_TRIBUTARIA_BASE, mensagem: "Mantenha a carga tributária atual." }
+        },
+        historicoRetiradas: 0,           // Total acumulado de todas as retiradas
+        retiradaPermanente: 0,           // Impacto permanente na arrecadação (%)
+        limiteRecuperacao: 1.0,          // Limite máximo do multiplicador de recuperação
+        deducaoDiaria: 0,                // Valor da dedução diária no caixa
+        totalRetirado: 0,                // Total de valores retirados (acumulado)
+        
+        historicoCaixa: [PIB_FRANCA * 0.05], // Guarda o histórico de caixa
+        multiplicadorRecuperacao: 1.0,       // Multiplicador que afeta a capacidade de recuperação
+        grandePerdaCaixa: false,             // Flag para identificar se houve grande perda recente
+      },
+      {
+        nome: 'Teste 2', 
+        caixa: PIB_FRANCA * 0.05, 
+        pib: PIB_FRANCA, 
+        pibAnterior: PIB_FRANCA,
+        pibTrimestralAnterior: PIB_FRANCA,
+        crescimentoPIB: CRESCIMENTO_PIB_BASE, // Apenas para exibição
+        crescimentoPIBIntrinseco: CRESCIMENTO_PIB_BASE, // Valor base constante usado nos cálculos
+        crescimentoDiario: CRESCIMENTO_PIB_BASE / 365,
+        juros: JUROS_BASE, 
+        investimentoPublico: INVESTIMENTO_PUBLICO_BASE,
+        cargaTributaria: CARGA_TRIBUTARIA_BASE,
+        popularidade: 50, 
+        dividaPublica: PIB_FRANCA * DIVIDA_PERCENTUAL_PIB,
+        inflacao: INFLACAO_BASE,
+        desemprego: 7.1, // Taxa de desemprego da França
+        historicoJuros: Array(10).fill(JUROS_BASE),
+        historicoInvestimento: Array(10).fill(INVESTIMENTO_PUBLICO_BASE),
+        historicoInflacao: Array(12).fill(INFLACAO_BASE),
+        historicoCrescimento: Array(4).fill(CRESCIMENTO_PIB_BASE),
+        historicoCargaTributaria: Array(10).fill(CARGA_TRIBUTARIA_BASE),
+        sugestoes: {
+          juros: { valor: JUROS_BASE, mensagem: "Mantenha a taxa de juros atual." },
+          investimento: { valor: INVESTIMENTO_PUBLICO_BASE, mensagem: "Mantenha o investimento público atual." },
+          cargaTributaria: { valor: CARGA_TRIBUTARIA_BASE, mensagem: "Mantenha a carga tributária atual." }
+        },
+        historicoRetiradas: 0,           // Total acumulado de todas as retiradas
+        retiradaPermanente: 0,           // Impacto permanente na arrecadação (%)
+        limiteRecuperacao: 1.0,          // Limite máximo do multiplicador de recuperação
+        deducaoDiaria: 0,                // Valor da dedução diária no caixa
+        totalRetirado: 0,                // Total de valores retirados (acumulado)
+
+        historicoCaixa: [PIB_FRANCA * 0.05], // Guarda o histórico de caixa
+        multiplicadorRecuperacao: 1.0,       // Multiplicador que afeta a capacidade de recuperação
+        grandePerdaCaixa: false,             // Flag para identificar se houve grande perda recente
+      },
+      {
+        nome: 'Teste 3', 
+        caixa: PIB_PERU * 0.04, // 4% do PIB (menores reservas)
+        pib: PIB_PERU, 
+        pibAnterior: PIB_PERU,
+        pibTrimestralAnterior: PIB_PERU,
+        crescimentoPIB: CRESCIMENTO_PIB_BASE_PERU, // Apenas para exibição
+        crescimentoPIBIntrinseco: CRESCIMENTO_PIB_BASE_PERU, // Valor base constante usado nos cálculos
+        crescimentoDiario: CRESCIMENTO_PIB_BASE_PERU / 365,
+        juros: JUROS_BASE_PERU, 
+        investimentoPublico: INVESTIMENTO_PUBLICO_BASE_PERU,
+        cargaTributaria: CARGA_TRIBUTARIA_BASE_PERU,
+        popularidade: 45, // Menor que a França
+        dividaPublica: PIB_PERU * DIVIDA_PERCENTUAL_PIB_PERU,
+        inflacao: INFLACAO_BASE_PERU,
+        desemprego: DESEMPREGO_BASE_PERU,
+        historicoJuros: Array(10).fill(JUROS_BASE_PERU),
+        historicoInvestimento: Array(10).fill(INVESTIMENTO_PUBLICO_BASE_PERU),
+        historicoInflacao: Array(12).fill(INFLACAO_BASE_PERU),
+        historicoCrescimento: Array(4).fill(CRESCIMENTO_PIB_BASE_PERU),
+        historicoCargaTributaria: Array(10).fill(CARGA_TRIBUTARIA_BASE_PERU),
+        sugestoes: {
+          juros: { valor: JUROS_BASE_PERU, mensagem: "Mantenha a taxa de juros atual." },
+          investimento: { valor: INVESTIMENTO_PUBLICO_BASE_PERU, mensagem: "Mantenha o investimento público atual." },
+          cargaTributaria: { valor: CARGA_TRIBUTARIA_BASE_PERU, mensagem: "Mantenha a carga tributária atual." }
+        },
+        historicoRetiradas: 0,           // Total acumulado de todas as retiradas
+        retiradaPermanente: 0,           // Impacto permanente na arrecadação (%)
+        limiteRecuperacao: 0.85,         // Limite máximo do multiplicador de recuperação (menor que a França)
+        deducaoDiaria: 0,                // Valor da dedução diária no caixa
+        totalRetirado: 0,                // Total de valores retirados (acumulado)
+        
+        historicoCaixa: [PIB_PERU * 0.04], // Guarda o histórico de caixa
+        multiplicadorRecuperacao: 1.0,     // Multiplicador que afeta a capacidade de recuperação
+        grandePerdaCaixa: false,           // Flag para identificar se houve grande perda recente
+      }
+    ];
+
+    const controles = ['juros', 'cargaTributaria','investimentoPublico'];
+    let turnos = 0;
+    let dataAtual = new Date(2025, 0, 1); // 1 de janeiro de 2025
+
+    // Atualiza a data do jogo
+    function atualizarData() {
+      dataAtual.setDate(dataAtual.getDate() + 1);
+      const dia = dataAtual.getDate().toString().padStart(2, '0');
+      const mes = (dataAtual.getMonth() + 1).toString().padStart(2, '0');
+      const ano = dataAtual.getFullYear();
+      document.getElementById("data").innerText = `Data: ${dia}/${mes}/${ano}`;
+    }
+
+    // Calcula o impacto da taxa de juros no PIB
+    function calculaImpactoJuros(juros, pib) {
+      // Função sigmoide para modelar o impacto da taxa de juros
+      // Sensibilidade reduzida em torno da taxa neutra para maior estabilidade
+      const taxaNeutra = JUROS_BASE;
+      const sensibilidade = 0.6; // Reduzido de 0.8 para 0.6
+      
+      // Taxa real de juros considerando a inflação
+      const delta = juros - taxaNeutra;
+      
+      // Impacto negativo aumenta exponencialmente quando a taxa é muito alta
+      let impacto;
+      if (delta <= 0) {
+        // Taxa de juros abaixo da neutra: estímulo econômico, mas risco inflacionário
+        // Impacto reduzido para maior estabilidade
+        impacto = 0.00008 * Math.abs(delta) * (1 - Math.exp(-sensibilidade * Math.abs(delta)));
+      } else {
+        // Taxa de juros acima da neutra: contração econômica
+        // Impacto reduzido para maior estabilidade
+        impacto = -0.0001 * delta * (1 + Math.exp(sensibilidade * delta/2));
+      }
+      
+      return impacto;
+    }
+
+    // Calcula o impacto do investimento público no PIB
+    function calculaImpactoInvestimento(investimento, pib, inflacao) {
+      const investimentoNeutro = INVESTIMENTO_PUBLICO_BASE; // 21% é considerado neutro
+      const delta = investimento - investimentoNeutro;
+      
+      // Modelar redução de eficácia quando o investimento é excessivo (retornos decrescentes)
+      let multiplicador;
+      
+      if (delta <= 0) {
+        // Austeridade: impacto negativo no curto prazo, mas pode reduzir inflação
+        // Impacto reduzido para mais estabilidade
+        multiplicador = 0.00002 * delta; // Negativo, mas com menor intensidade
+      } else {
+        // Expansão: impacto positivo que diminui com inflação alta
+        const eficacia = Math.max(0, 1 - (inflacao / 12)); // Menos sensível à inflação
+        // Fator de suavização para evitar crescimento explosivo com altos investimentos
+        const fatorSuavizacao = Math.max(0.6, 1 - (delta / 40)); 
+        multiplicador = 0.00002 * delta * eficacia * fatorSuavizacao;
+      }
+      
+      // Efeito de longo prazo (infraestrutura)
+      const baseInvestimento = investimento / 100;
+      // Adicionamos uma constante pequena para garantir um impacto positivo mínimo
+      const impactoLongoPrazo = (0.000008 * baseInvestimento * pib) + (0.000003 * pib);
+      
+      // Limitar o impacto para evitar oscilações extremas
+      const impactoTotal = multiplicador + impactoLongoPrazo / pib;
+      return Math.max(-0.0005, Math.min(0.0005, impactoTotal));
+    }
+
+    // Calcula o impacto da carga tributária no PIB e outras variáveis econômicas
+    function calculaImpactoCargaTributaria(cargaTributaria, pib) {
+      const cargaNeutra = CARGA_TRIBUTARIA_BASE; // 46% é considerado neutro para a França
+      const delta = cargaTributaria - cargaNeutra;
+      
+      // Curva de Laffer: impacto no crescimento é mais negativo quando a carga se afasta muito do ponto ótimo
+      // Para simplificar, consideramos o ponto neutro como o próximo ao ótimo para a economia simulada
+      
+      // Impacto no crescimento (curva em U invertido)
+      let impactoCrescimento;
+      if (delta <= 0) {
+        // Carga menor que a neutra: positivo para crescimento até certo ponto, depois negativo por falta de infraestrutura
+        if (delta > -10) {
+          // Pequena redução na carga
+          impactoCrescimento = 0.00003 * Math.abs(delta); 
+        } else {
+          // Redução muito grande na carga: efeitos negativos por falta de infraestrutura
+          impactoCrescimento = 0.00003 * 10 - 0.00002 * (Math.abs(delta) - 10);
+        }
+      } else {
+        // Carga maior que a neutra: impacto negativo exponencial
+        impactoCrescimento = -0.00004 * delta * (1 + 0.05 * delta);
+      }
+      
+      // Impacto no desemprego (correlação positiva com carga alta)
+      const impactoDesemprego = 0.01 * delta;
+      
+      // Impacto na popularidade (correlação negativa com carga alta)
+      const impactoPopularidade = -0.2 * delta;
+      
+      return {
+        crescimento: impactoCrescimento,
+        desemprego: impactoDesemprego,
+        popularidade: impactoPopularidade
+      };
+    }
+
+    // Atualiza as estatísticas dos jogadores
+    // Modificação na função updatePlayer para aplicar a redução permanente na arrecadação
+    function updatePlayer(p, indice) {
+        // Ciclos econômicos e choques externos (comuns a todos jogadores)
+        const cicloEconomico = ondaEconomica(0.0002, 180, 0, turnos); // Ciclo mais suave e longo
+        const choqueExterno = Math.random() < 0.005 ? ruido(0.0005) : 0; // Choques menos frequentes e menos intensos
+        const caixaInicial = p.caixa;
+
+        // Atualização dos históricos
+        p.historicoJuros.push(p.juros);
+        if (p.historicoJuros.length > 10) p.historicoJuros.shift();
+
+        p.historicoInvestimento.push(p.investimentoPublico);
+        if (p.historicoInvestimento.length > 10) p.historicoInvestimento.shift();
+
+        p.historicoInflacao.push(p.inflacao);
+        if (p.historicoInflacao.length > 12) p.historicoInflacao.shift();
+        
+        p.historicoCargaTributaria.push(p.cargaTributaria);
+        if (p.historicoCargaTributaria.length > 10) p.historicoCargaTributaria.shift();
+
+        // Cálculo de variações
+        const variacaoJuros = p.juros - p.historicoJuros[0];
+        const variacaoInvest = p.investimentoPublico - p.historicoInvestimento[0];
+        const variacaoCargaTributaria = p.cargaTributaria - p.historicoCargaTributaria[0];
+
+        // Atualização da inflação - menos sensível para evitar oscilações bruscas
+        // Modelo Phillips Curve - relação inversa entre desemprego e inflação
+        const pressaoInflacionaria = (p.investimentoPublico - INVESTIMENTO_PUBLICO_BASE) * 0.02 - (p.juros - JUROS_BASE) * 0.1;
+        
+        // Ajuste pela curva de Phillips (inflação e desemprego)
+        const ajustePhillips = -0.015 * (p.desemprego - 7);
+        
+        // Inércia inflacionária (média móvel)
+        const inflacaoMedia = p.historicoInflacao.reduce((a, b) => a + b, 0) / p.historicoInflacao.length;
+        const inerciaInflacionaria = (inflacaoMedia - p.inflacao) * 0.08;
+        
+        // Nova inflação considerando todos os fatores - reduzido coeficiente para mais estabilidade
+        p.inflacao += pressaoInflacionaria * 0.03 + ajustePhillips + inerciaInflacionaria;
+        p.inflacao = Math.max(0, Math.min(30, p.inflacao));
+
+        // Calcular impacto da carga tributária
+        const impactoCargaTributaria = calculaImpactoCargaTributaria(p.cargaTributaria, p.pib);
+        
+        // Ajuste do desemprego - agora considera também carga tributária
+        const pressaoDesemprego = -0.0008 * p.crescimentoPIB + 0.006 * (p.juros - JUROS_BASE) + impactoCargaTributaria.desemprego / 100;
+        p.desemprego += pressaoDesemprego;
+        p.desemprego = Math.max(3, Math.min(25, p.desemprego));
+        
+        // Cálculo do impacto da taxa de juros e investimento no PIB
+        const impactoJuros = calculaImpactoJuros(p.juros, p.pib);
+        const impactoInvestimento = calculaImpactoInvestimento(p.investimentoPublico, p.pib, p.inflacao);
+        
+        // Fator de estabilidade para evitar quedas bruscas do PIB
+        const fatorEstabilidade = 0.0002; // Pequeno impulso positivo constante
+        
+        // CORREÇÃO: Usamos o crescimentoPIBIntrinseco (constante) como base
+        const crescimentoBase = p.crescimentoPIBIntrinseco / 365; 
+        
+        // Crescimento do PIB diário com todos os fatores + fator de estabilidade + impacto tributário
+        const crescimentoDiario = (crescimentoBase / 100) + impactoJuros + impactoInvestimento + fatorEstabilidade + cicloEconomico + choqueExterno + impactoCargaTributaria.crescimento;
+        
+        // Limitamos as oscilações diárias para evitar instabilidades
+        const crescimentoDiarioLimitado = Math.max(-0.001, Math.min(0.003, crescimentoDiario));
+        p.crescimentoDiario = crescimentoDiarioLimitado * 100; // Em percentual
+        
+        // Atualização do PIB com crescimento limitado
+        p.pibAnterior = p.pib; // Guarda valor anterior para cálculo diário
+        p.pib *= (1 + crescimentoDiarioLimitado);
+        
+        // Redução do PIB pela inflação (ajuste real x nominal) - impacto reduzido
+        const impactoRealInflacao = -p.inflacao / 365 / 150; // Reduzido o impacto da inflação
+        p.pib *= (1 + impactoRealInflacao);
+
+        // Verificar se houve grande perda de caixa recentemente
+        if (p.grandePerdaCaixa) {
+            // MODIFICADO: Gradualmente recuperar a capacidade de recuperação (mais rapidamente)
+            p.multiplicadorRecuperacao = Math.min(p.limiteRecuperacao, p.multiplicadorRecuperacao + 0.0001); // Aumentado de 0.00005 para 0.0001
+            
+            // MODIFICADO: Quando o multiplicador de recuperação volta a 80%, consideramos que a economia se recuperou
+            if (p.multiplicadorRecuperacao >= p.limiteRecuperacao * 0.8) { // Reduzido de 0.95 para 0.8
+                p.grandePerdaCaixa = false;
+            }
+        }
+        // Cálculo da arrecadação com impacto da perda de caixa
+        const taxaTributaria = (p.cargaTributaria / 100) * (1 - 0.004 * (p.desemprego - 7));
+            
+        // Este valor representa a perda permanente de capacidade de arrecadação devido às retiradas
+         const redutorPermanente = Math.max(0, 1 - (p.retiradaPermanente / 100));
+
+        // Aplicar o multiplicador de recuperação à arrecadação e o redutor permanente
+        const arrecadacaoDiaria = p.pib * taxaTributaria / 365 * p.multiplicadorRecuperacao * redutorPermanente;
+        
+        // Cálculo dos gastos públicos
+        const gastosPublicosDiarios = (p.pib * (p.investimentoPublico / 100)) / 365;
+        
+        // Gasto com juros da dívida pública
+        const gastoJurosDiario = p.dividaPublica * (p.juros / 100 / 365);
+
+        // Verificar se há dedução diária programada e aplicá-la
+        let deducaoAplicada = 0;
+        if (p.deducaoDiaria > 0) {
+            deducaoAplicada = p.deducaoDiaria;
+            p.caixa -= p.deducaoDiaria;
+        }
+        
+        // Atualização do saldo (resultado primário)
+        const saldoDiario = arrecadacaoDiaria - gastosPublicosDiarios - gastoJurosDiario;
+        p.caixa += saldoDiario;
+        
+        // Detectar mudanças significativas no caixa (para diagnóstico)
+        const mudancaCaixa = p.caixa - caixaInicial;
+        const percentualMudanca = Math.abs(mudancaCaixa / caixaInicial) * 100;
+        
+        // Logar informações detalhadas sobre fluxos de caixa apenas para mudanças significativas
+        if (percentualMudanca > 10 && indice === 0 && turnos % 100 === 0) {  // Apenas para o jogador 1 e a cada 100 turnos
+            console.log(`[Diagnóstico] Jogador ${indice+1}, Turno ${turnos}:`);
+            console.log(`Caixa inicial: $${caixaInicial/1e9} bi`);
+            console.log(`Arrecadação: +$${arrecadacaoDiaria/1e9} bi`);
+            console.log(`Gastos públicos: -$${gastosPublicosDiarios/1e9} bi`);
+            console.log(`Juros da dívida: -$${gastoJurosDiario/1e9} bi`);
+            console.log(`Dedução programada: -$${deducaoAplicada/1e9} bi`);
+            console.log(`Saldo diário: $${saldoDiario/1e9} bi`);
+            console.log(`Caixa final: $${p.caixa/1e9} bi (${mudancaCaixa > 0 ? '+' : ''}${percentualMudanca.toFixed(2)}%)`);
+        }
+        
+        // Perda de caixa severa pode levar a maior dependência de empréstimos de emergência a taxas desfavoráveis
+        if (p.caixa < 0 && p.grandePerdaCaixa) {
+            // Taxa de juros emergencial mais alta para cobrir o déficit
+            const taxaEmergencial = p.juros * 1.5;
+            const jurosEmergenciaisDiarios = Math.abs(p.caixa) * (taxaEmergencial / 100 / 365);
+            
+            // Adicionar juros emergenciais e transferir para a dívida
+            p.dividaPublica += Math.abs(p.caixa) + jurosEmergenciaisDiarios;
+            p.caixa = 0;
+        }
+        else if (p.caixa > p.pib * 0.1) {
+            // Superávit significativo: redução da dívida
+            const amortizacao = (p.caixa - p.pib * 0.05) * 0.3;
+            p.dividaPublica -= Math.min(amortizacao, p.dividaPublica);
+            p.caixa -= amortizacao;
+        }
+        
+        // Limitação na redução da dívida (realista)
+        if (p.dividaPublica < p.pib * 0.3) {
+            p.dividaPublica = p.pib * 0.3; // Dívida mínima estrutural
+        }
+        
+        // Cálculo da popularidade
+        let impactoPopularidade = 0;
+        
+        // Fatores que afetam a popularidade
+        const impactoCrescimento = (p.crescimentoPIB - 1) * 0.2;
+        const impactoInflacao = -(p.inflacao - 2) * 0.3;
+        const impactoDesemprego = -(p.desemprego - 7) * 0.2;
+        const impactoDivida = -((p.dividaPublica / p.pib) - 0.6) * 0.05;
+        
+        // Impacto da carga tributária na popularidade
+        const impactoCarga = impactoCargaTributaria.popularidade;
+        
+        impactoPopularidade += impactoCrescimento + impactoInflacao + impactoDesemprego + impactoDivida + impactoCarga;
+        
+        // Efeito de médio prazo (tendência de regressão à média)
+        impactoPopularidade += (50 - p.popularidade) * 0.005;
+        
+        // Onda de aprovação (ciclo político)
+        const cicloPopularidade = ondaEconomica(0.1, 180, indice, turnos);
+        impactoPopularidade += cicloPopularidade;
+        
+        // Ruído (eventos aleatórios afetando popularidade)
+        impactoPopularidade += ruido(0.2);
+        
+        p.popularidade += impactoPopularidade;
+        p.popularidade = Math.max(5, Math.min(95, p.popularidade));
+
+        // Atualizar as sugestões de controle baseadas na situação atual
+        atualizarSugestoes(p, indice);
+    }
+
+    // Prepara os controles dos jogadores (chamado apenas uma vez na inicialização)
+    function prepararControles() {
+      players.forEach((p, i) => {
+        const el = document.getElementById(`player${i + 1}`);
+        const controlsHtml = controles.map(c => {
+          let min, max;
+          if (c === 'juros') {
+            min = 0;
+            max = 30;
+          } else if (c === 'cargaTributaria') {
+            min = 20;
+            max = 60;
+          } else if (c === 'investimentoPublico') {
+            min = 20;
+            max = 80;
+          }
+          
+          let labelText;
+          if (c === 'juros') {
+            labelText = 'TAXA DE JUROS';
+          } else if (c === 'cargaTributaria') {
+            labelText = 'CARGA TRIBUTÁRIA';
+          } else if (c === 'investimentoPublico') {
+            labelText = 'INVESTIMENTO PÚBLICO';
+          }
+          
+          return `
+            <div class="slider-group">
+              <label>${labelText}: 
+                <span id="val-${c}-${i}">${p[c]}</span>%</label>
+              <input type="range" id="slider-${c}-${i}" min="${min}" max="${max}" value="${p[c]}" step="0.25" 
+                oninput="atualizarValorControle(${i}, '${c}', this.value)" />
+            </div>
+          `;
+        }).join('');
+
+        // Área para sugestões econômicas
+        const sugestoesHtml = `
+          <div id="sugestoes-${i}" class="sugestoes">
+            <h3>Recomendações Econômicas</h3>
+            <div class="sugestao-item">
+              <span>Juros: ${p.sugestoes.juros.mensagem}</span>
+              <button class="btn-aplicar" onclick="aplicarSugestao(${i}, 'juros', ${p.sugestoes.juros.valor})">Aplicar</button>
+            </div>
+            <div class="sugestao-item">
+              <span>Carga Tributária: ${p.sugestoes.cargaTributaria.mensagem}</span>
+              <button class="btn-aplicar" onclick="aplicarSugestao(${i}, 'cargaTributaria', ${p.sugestoes.cargaTributaria.valor})">Aplicar</button>
+            </div>
+            <div class="sugestao-item">
+              <span>Investimento: ${p.sugestoes.investimento.mensagem}</span>
+              <button class="btn-aplicar" onclick="aplicarSugestao(${i}, 'investimento', ${p.sugestoes.investimento.valor})">Aplicar</button>
+            </div>
+          </div>
+        `;
+
+        // Área para emissão de títulos (mantida fora da atualização automática)
+        const emissaoHtml = `
+          <hr>
+          <div class="slider-group">
+            <label>EMISSÃO DE TÍTULOS ($ bi): <span id="val-emissao-${i}">10</span> 
+              <small>(Taxa de mercado: <span id="taxa-mercado-${i}">${(p.juros).toFixed(2)}</span>%)</small>
+            </label>
+            <input type="range" min="1" max="100" step="1" value="10" id="slider-emissao-${i}" 
+              oninput="document.getElementById('val-emissao-${i}').innerText = this.value">
+            <button onclick="emitirTitulos(${i})">Emitir Títulos</button>
+          </div>
+        `;
+
+        // Conteúdo completo do player
+        el.innerHTML = `
+          <h2>${p.nome}</h2>
+          <div class="stat">Caixa: <span id="caixa-${i}">$${(p.caixa / 1_000_000_000).toFixed(2)} bi</span></div>
+          <div class="stat">Dívida Pública: <span id="divida-${i}">$${(p.dividaPublica / 1_000_000_000).toFixed(2)} bi (${(p.dividaPublica/p.pib*100).toFixed(1)}% do PIB)</span></div>
+          <div class="stat">PIB: <span id="pib-${i}">$${(p.pib / 1_000_000_000).toFixed(2)} bi</span></div>
+          <div class="stat">Crescimento Anualizado: <span id="crescimento-${i}">${p.crescimentoPIB.toFixed(2)}%</span> (trimestral)</div>
+          
+          <div class="stat">Desemprego: <span id="desemprego-${i}">${p.desemprego.toFixed(1)}%</span></div>
+          <div class="stat">Popularidade: <span id="pop-${i}">${p.popularidade.toFixed(1)}%</span></div>
+          <div class="stat">Inflação: <span id="inflacao-${i}">${p.inflacao.toFixed(1)}%</span></div>
+     
+          <br />
+          
+          <div class="stat">Variação Diária: <span id="crescimento-diario-${i}">${p.crescimentoDiario.toFixed(4)}%</span></div>
+          <div class="stat">Carga Tributária: <span id="carga-tributaria-${i}">${p.cargaTributaria.toFixed(1)}%</span></div>
+
+          <br />
+          
+          ${controlsHtml}
+          ${sugestoesHtml}
+          ${emissaoHtml}
+        `;
+      });
+      adicionarBotaoRetirada();
+    }
+
+
+    // Função para atualizar o valor de um controle quando o usuário move o slider
+    function atualizarValorControle(playerIndex, controle, valor) {
+      const valorNumerico = parseFloat(valor);
+      players[playerIndex][controle] = valorNumerico;
+      document.getElementById(`val-${controle}-${playerIndex}`).innerText = valorNumerico.toFixed(2);
+    }
+
+    // Renderiza apenas os indicadores (não recria os controles)
+    function renderIndicadores() {
+        document.getElementById("rodada").innerText = `Tempo: ${turnos} (Dia ${turnos + 1})`;
+        
+        players.forEach((p, i) => {
+            // Cores para indicadores
+            const getClasseInflacao = (inflacao) => {
+                if (inflacao < 2) return '';
+                if (inflacao < 5) return 'warning';
+                return 'negative';
+            };
+            
+            const getClasseCrescimento = (crescimento) => {
+                if (crescimento < 0) return 'negative';
+                if (crescimento < 1) return 'warning';
+                return 'positive';
+            };
+            
+            const getClasseDivida = (divida, pib) => {
+                const ratio = divida/pib;
+                if (ratio > 1) return 'negative';
+                if (ratio > 0.7) return 'warning';
+                return '';
+            };
+        
+            // Atualiza apenas os valores dos indicadores e suas classes
+            document.getElementById(`caixa-${i}`).innerText = `$${(p.caixa / 1_000_000_000).toFixed(2)} bi`;
+
+             // Atualiza o indicador de caixa com a dedução, se existir
+            const caixaEl = document.getElementById(`caixa-${i}`);
+            if (p.deducaoDiaria > 0) {
+                caixaEl.innerHTML = `$${(p.caixa / 1_000_000_000).toFixed(2)} bi `; //<span class="negative">(-$${(p.deducaoDiaria / 1_000_000_000).toFixed(2)} bi/dia)</span>
+            } else {
+                caixaEl.innerHTML = `$${(p.caixa / 1_000_000_000).toFixed(2)} bi`;
+            }
+            
+            /*
+            // Mostrar também o total retirado, se existir
+            if (p.totalRetirado > 0) {
+                // Verificar se o elemento já existe
+                if (!document.getElementById(`total-retirado-${i}`)) {
+                    const playerEl = document.getElementById(`player${i + 1}`);
+                    const retiradoEl = document.createElement('div');
+                    retiradoEl.id = `total-retirado-${i}`;
+                    retiradoEl.className = 'stat';
+                    
+                    // Inserir após o elemento do caixa
+                    const caixaNode = caixaEl.parentNode;
+                    if (caixaNode.nextSibling) {
+                    playerEl.insertBefore(retiradoEl, caixaNode.nextSibling);
+                    } else {
+                    playerEl.appendChild(retiradoEl);
+                    }
+                }
+                
+                // Atualizar o elemento
+                const retiradoEl = document.getElementById(`total-retirado-${i}`);
+                retiradoEl.innerHTML = `Total Retirado: <span class="negative">$${(p.totalRetirado / 1_000_000_000).toFixed(2)} bi</span>`;
+            }
+            */
+            
+            const dividaEl = document.getElementById(`divida-${i}`);
+            dividaEl.innerText = `$${(p.dividaPublica / 1_000_000_000).toFixed(2)} bi (${(p.dividaPublica/p.pib*100).toFixed(1)}% do PIB)`;
+            dividaEl.className = getClasseDivida(p.dividaPublica, p.pib);
+            
+            document.getElementById(`pib-${i}`).innerText = `$${(p.pib / 1_000_000_000).toFixed(2)} bi`;
+            
+            const crescimentoEl = document.getElementById(`crescimento-${i}`);
+            crescimentoEl.innerText = `${p.crescimentoPIB.toFixed(2)}%`;
+            crescimentoEl.className = getClasseCrescimento(p.crescimentoPIB);
+            
+            // Mostrar o impacto permanente, se existir
+            if (p.retiradaPermanente > 0.1) {
+                // Verificar se o elemento já existe
+                if (!document.getElementById(`impacto-permanente-${i}`)) {
+                    const playerEl = document.getElementById(`player${i + 1}`);
+                    const impactoEl = document.createElement('div');
+                    impactoEl.id = `impacto-permanente-${i}`;
+                    impactoEl.className = 'stat';
+                    
+                    // Inserir após o elemento do caixa
+                    const caixaEl = document.getElementById(`caixa-${i}`);
+                    if (caixaEl) {
+                        playerEl.insertBefore(impactoEl, caixaEl.nextSibling);
+                    } else {
+                        playerEl.appendChild(impactoEl);
+                    }
+                }
+                
+                // Atualizar o elemento
+                const impactoEl = document.getElementById(`impacto-permanente-${i}`);
+                const impactoClasse = p.retiradaPermanente > 5 ? 'negative' : 
+                                    (p.retiradaPermanente > 2 ? 'warning' : '');
+                impactoEl.innerHTML = `Perda Permanente: <span class="${impactoClasse}">${p.retiradaPermanente.toFixed(1)}%</span>`;
+                impactoEl.style.display = 'block';
+            } else {
+                const impactoEl = document.getElementById(`impacto-permanente-${i}`);
+                if (impactoEl) {
+                    impactoEl.style.display = 'none';
+                }
+            }
+
+            // Adicione um elemento para mostrar o multiplicador de recuperação, se não existir
+            if (!document.getElementById(`recuperacao-${i}`)) {
+                const playerEl = document.getElementById(`player${i + 1}`);
+                const recuperacaoEl = document.createElement('div');
+                recuperacaoEl.id = `recuperacao-${i}`;
+                recuperacaoEl.className = 'stat';
+                
+                // Inserir após o elemento de caixa
+                const caixaEl = document.getElementById(`caixa-${i}`);
+                if (caixaEl && caixaEl.nextSibling) {
+                    playerEl.insertBefore(recuperacaoEl, caixaEl.nextSibling);
+                } else {
+                    playerEl.appendChild(recuperacaoEl);
+                }
+            }
+            
+            // Atualizar o elemento com o valor atual
+            const recuperacaoEl = document.getElementById(`recuperacao-${i}`);
+            if (p.multiplicadorRecuperacao < 1.0) {
+                const recuperacaoClass = p.multiplicadorRecuperacao < 0.6 ? 'negative' : 
+                                        (p.multiplicadorRecuperacao < 0.8 ? 'warning' : '');
+                recuperacaoEl.innerHTML = `Recuperação Fiscal: <span class="${recuperacaoClass}">${(p.multiplicadorRecuperacao * 100).toFixed(1)}%</span>`;
+                recuperacaoEl.style.display = 'block';
+            } else {
+                recuperacaoEl.style.display = 'none';
+            }
+            
+            const desempregoEl = document.getElementById(`desemprego-${i}`);
+            desempregoEl.innerText = `${p.desemprego.toFixed(1)}%`;
+            desempregoEl.className = p.desemprego > 8 ? 'negative' : '';
+            
+            document.getElementById(`pop-${i}`).innerText = `${p.popularidade.toFixed(1)}%`;
+            
+            const inflacaoEl = document.getElementById(`inflacao-${i}`);
+            inflacaoEl.innerText = `${p.inflacao.toFixed(1)}%`;
+            inflacaoEl.className = getClasseInflacao(p.inflacao);
+            
+            // Atualiza a taxa de mercado na parte de emissão de títulos
+            const spreadRisco = Math.max(0, (p.dividaPublica / p.pib - 0.6) * 100);
+            const taxaJurosMercado = p.juros + spreadRisco / 100;
+            document.getElementById(`taxa-mercado-${i}`).innerText = taxaJurosMercado.toFixed(2);
+        });
+    }
+    
+   
+   // Função para gerar sugestões de controle baseadas na situação econômica
+    function atualizarSugestoes(player, indice) {
+        // Função auxiliar para calcular ajustes proporcionais
+        function calcularAjusteProporcional(valorAtual, valorNeutro, min, max) {
+            const delta = valorAtual - valorNeutro;
+            const distanciaMaxima = Math.max(valorNeutro - min, max - valorNeutro);
+            
+            // Calcula a porcentagem do desvio em relação ao desvio máximo possível
+            const percentualDesvio = Math.abs(delta) / distanciaMaxima;
+            
+            // Ajuste proporcional: quanto maior o desvio, maior o ajuste recomendado
+            let ajuste;
+            if (percentualDesvio < 0.2) {
+            // Desvio pequeno: ajuste suave
+            ajuste = 0.5;
+            } else if (percentualDesvio < 0.4) {
+            // Desvio médio: ajuste moderado
+            ajuste = 1.0;
+            } else if (percentualDesvio < 0.6) {
+            // Desvio significativo: ajuste mais forte
+            ajuste = 2.0;
+            } else if (percentualDesvio < 0.8) {
+            // Desvio grande: ajuste substancial
+            ajuste = 3.0;
+            } else {
+            // Desvio extremo: ajuste drástico
+            ajuste = 4.0;
+            }
+            
+            // O ajuste sempre move na direção do valor neutro
+            return delta > 0 ? -ajuste : ajuste;
+        }
+
+        // Sugestões para carga tributária
+        const cargaNeutra = CARGA_TRIBUTARIA_BASE; // 46% para a França
+        
+        if (player.dividaPublica > player.pib * 1.1 && player.cargaTributaria < 50) {
+            // Dívida muito alta: aumentar tributos (ajuste mais substancial)
+            const ajuste = Math.min(4.0, (player.dividaPublica / player.pib - 1.1) * 10);
+            const novaCarga = Math.min(60, player.cargaTributaria + ajuste);
+            player.sugestoes.cargaTributaria = {
+            valor: novaCarga,
+            mensagem: `Aumente para ${novaCarga.toFixed(1)}% para reduzir o déficit fiscal grave`
+            };
+        } else if (player.desemprego > 10 && player.cargaTributaria > 40) {
+            // Desemprego alto: reduzir tributos para estimular economia (proporcional ao desemprego)
+            const ajuste = Math.min(5.0, (player.desemprego - 10) * 0.5);
+            const novaCarga = Math.max(30, player.cargaTributaria - ajuste);
+            player.sugestoes.cargaTributaria = {
+            valor: novaCarga,
+            mensagem: `Reduza para ${novaCarga.toFixed(1)}% para combater o desemprego de ${player.desemprego.toFixed(1)}%`
+            };
+        } else if (player.crescimentoPIB < 0.5 && player.cargaTributaria > cargaNeutra) {
+            // Crescimento baixo: reduzir carga (ajuste proporcional ao crescimento baixo)
+            const ajuste = Math.min(3.0, (0.5 - player.crescimentoPIB) * 2);
+            const novaCarga = Math.max(35, player.cargaTributaria - ajuste);
+            player.sugestoes.cargaTributaria = {
+            valor: novaCarga,
+            mensagem: `Reduza para ${novaCarga.toFixed(1)}% para estimular o crescimento estagnado`
+            };
+        } else if (player.inflacao > 5 && player.cargaTributaria < cargaNeutra) {
+            // Inflação alta com carga baixa: aumentar para reduzir consumo (proporcional à inflação)
+            const ajuste = Math.min(4.0, (player.inflacao - 5) * 0.4);
+            const novaCarga = Math.min(55, player.cargaTributaria + ajuste);
+            player.sugestoes.cargaTributaria = {
+            valor: novaCarga,
+            mensagem: `Aumente para ${novaCarga.toFixed(1)}% para reduzir o consumo e a inflação de ${player.inflacao.toFixed(1)}%`
+            };
+        } else if (Math.abs(player.cargaTributaria - cargaNeutra) > 8) {
+            // Carga muito diferente da neutra: normalizar gradualmente (proporcionalmente ao desvio)
+            const ajuste = calcularAjusteProporcional(player.cargaTributaria, cargaNeutra, 25, 60);
+            const novaCarga = player.cargaTributaria + ajuste;
+            const mensagem = ajuste > 0 ? "aumentar" : "reduzir";
+            player.sugestoes.cargaTributaria = {
+            valor: novaCarga,
+            mensagem: `Recomendamos ${mensagem} para ${novaCarga.toFixed(1)}% para normalizar a política fiscal`
+            };
+        } else {
+            // Manter estabilidade
+            player.sugestoes.cargaTributaria = {
+            valor: player.cargaTributaria,
+            mensagem: "Mantenha a carga tributária atual"
+            };
+        }
+        
+        // Sugestões para taxa de juros
+        const jurosNeutro = JUROS_BASE; // 3.5% para o modelo
+        
+        if (player.inflacao > 5) {
+            // Inflação alta: aumentar juros (proporcional à gravidade da inflação)
+            const ajuste = Math.min(3.0, (player.inflacao - 5) * 0.3);
+            const novoJuros = Math.min(15, player.juros + ajuste);
+            player.sugestoes.juros = {
+            valor: novoJuros,
+            mensagem: `Aumente para ${novoJuros.toFixed(2)}% para combater a inflação alta de ${player.inflacao.toFixed(1)}%`
+            };
+        } else if (player.inflacao < 1.5 && player.crescimentoPIB < 1) {
+            // Inflação baixa e crescimento baixo: reduzir juros (ajuste mais forte)
+            const ajuste = Math.min(2.0, (1 - player.crescimentoPIB) * 1.0);
+            const novoJuros = Math.max(0.25, player.juros - ajuste);
+            player.sugestoes.juros = {
+            valor: novoJuros,
+            mensagem: `Reduza para ${novoJuros.toFixed(2)}% para estimular o crescimento`
+            };
+        } else if (player.desemprego > 9) {
+            // Desemprego alto: reduzir juros moderadamente (proporcional ao desemprego)
+            const ajuste = Math.min(2.5, (player.desemprego - 9) * 0.25);
+            const novoJuros = Math.max(0.5, player.juros - ajuste);
+            player.sugestoes.juros = {
+            valor: novoJuros,
+            mensagem: `Reduza para ${novoJuros.toFixed(2)}% para combater o desemprego de ${player.desemprego.toFixed(1)}%`
+            };
+        } else if (Math.abs(player.juros - jurosNeutro) > 2) {
+            // Juros muito longe do neutro: normalizar gradualmente
+            const ajuste = calcularAjusteProporcional(player.juros, jurosNeutro, 0, 15);
+            const novoJuros = player.juros + ajuste;
+            const mensagem = ajuste > 0 ? "aumentar" : "reduzir";
+            player.sugestoes.juros = {
+            valor: novoJuros,
+            mensagem: `Recomendamos ${mensagem} para ${novoJuros.toFixed(2)}% para equilibrar a política monetária`
+            };
+        } else {
+            // Manter estabilidade
+            player.sugestoes.juros = {
+            valor: player.juros,
+            mensagem: "Mantenha a taxa de juros atual"
+            };
+        }
+        
+        // Sugestões para investimento público
+        const investimentoNeutro = INVESTIMENTO_PUBLICO_BASE; // 21% para o modelo
+        
+        if (player.crescimentoPIB < 0) {
+            // Recessão: aumentar investimento (proporcional à gravidade da recessão)
+            const ajuste = Math.min(8.0, Math.abs(player.crescimentoPIB) * 2);
+            const novoInvestimento = Math.min(50, player.investimentoPublico + ajuste);
+            player.sugestoes.investimento = {
+            valor: novoInvestimento,
+            mensagem: `Aumente significativamente para ${novoInvestimento.toFixed(2)}% para combater a recessão`
+            };
+        } else if (player.crescimentoPIB < 1 && player.desemprego > 8) {
+            // Estagnação com desemprego: aumentar investimento (proporcional ao desemprego)
+            const ajuste = Math.min(5.0, (player.desemprego - 8) * 0.5);
+            const novoInvestimento = Math.min(35, player.investimentoPublico + ajuste);
+            player.sugestoes.investimento = {
+            valor: novoInvestimento,
+            mensagem: `Aumente para ${novoInvestimento.toFixed(2)}% para estimular empregos`
+            };
+        } else if (player.dividaPublica > player.pib * 1.1) {
+            // Dívida muito alta: reduzir investimento (proporcional à dívida)
+            const ajuste = Math.min(4.0, (player.dividaPublica / player.pib - 1.1) * 10);
+            const novoInvestimento = Math.max(15, player.investimentoPublico - ajuste);
+            player.sugestoes.investimento = {
+            valor: novoInvestimento,
+            mensagem: `Reduza para ${novoInvestimento.toFixed(2)}% para controlar a dívida de ${(player.dividaPublica/player.pib*100).toFixed(1)}% do PIB`
+            };
+        } else if (player.inflacao > 6 && player.investimentoPublico > investimentoNeutro) {
+            // Inflação alta e investimento acima do neutro: reduzir gastos (proporcional à inflação)
+            const ajuste = Math.min(5.0, (player.inflacao - 6) * 0.5);
+            const novoInvestimento = Math.max(investimentoNeutro, player.investimentoPublico - ajuste);
+            player.sugestoes.investimento = {
+            valor: novoInvestimento,
+            mensagem: `Reduza para ${novoInvestimento.toFixed(2)}% para diminuir a pressão inflacionária de ${player.inflacao.toFixed(1)}%`
+            };
+        } else if (Math.abs(player.investimentoPublico - investimentoNeutro) > 8) {
+            // Investimento muito longe do neutro: normalizar gradualmente
+            const ajuste = calcularAjusteProporcional(player.investimentoPublico, investimentoNeutro, 10, 50);
+            const novoInvestimento = player.investimentoPublico + ajuste;
+            const mensagem = ajuste > 0 ? "aumentar" : "reduzir";
+            player.sugestoes.investimento = {
+            valor: novoInvestimento,
+            mensagem: `Recomendamos ${mensagem} para ${novoInvestimento.toFixed(2)}% para equilibrar os gastos públicos`
+            };
+        } else {
+            // Manter estabilidade
+            player.sugestoes.investimento = {
+            valor: player.investimentoPublico,
+            mensagem: "Mantenha o investimento público atual"
+            };
+        }
+        }
+    
+    // Função para renderizar o painel de sugestões
+    function renderSugestoes() {
+        players.forEach((p, i) => {
+            const sugestoesEl = document.getElementById(`sugestoes-${i}`);
+            if (sugestoesEl) {
+
+            // Verificar se a sugestão é para manter o valor atual
+            const jurosManterAtual = p.sugestoes.juros.mensagem === "Mantenha a taxa de juros atual";
+            const cargaManterAtual = p.sugestoes.cargaTributaria.mensagem === "Mantenha a carga tributária atual";
+            const investManterAtual = p.sugestoes.investimento.mensagem === "Mantenha o investimento público atual";
+            
+            // Atualizar o conteúdo das sugestões
+            let sugestoesHtml = `<h3>Recomendações Econômicas</h3>
+                <div class="sugestao-item">
+                <span>Juros: ${p.sugestoes.juros.mensagem}</span>
+                ${jurosManterAtual ? '' : `<button class="btn-aplicar" onclick="aplicarSugestao(${i}, 'juros', ${p.sugestoes.juros.valor})">Aplicar</button>`}
+                </div>
+                <div class="sugestao-item">
+                <span>Carga Tributária: ${p.sugestoes.cargaTributaria.mensagem}</span>
+                ${cargaManterAtual ? '' : `<button class="btn-aplicar" onclick="aplicarSugestao(${i}, 'cargaTributaria', ${p.sugestoes.cargaTributaria.valor})">Aplicar</button>`}
+                </div>
+                <div class="sugestao-item">
+                <span>Investimento: ${p.sugestoes.investimento.mensagem}</span>
+                ${investManterAtual ? '' : `<button class="btn-aplicar" onclick="aplicarSugestao(${i}, 'investimento', ${p.sugestoes.investimento.valor})">Aplicar</button>`}
+                </div>`;
+            
+            sugestoesEl.innerHTML = sugestoesHtml;
+            }
+        });
+    }
+    
+    // Função para aplicar uma sugestão
+    function aplicarSugestao(playerIndex, tipo, valor) {
+        if (tipo === 'juros') {
+            players[playerIndex].juros = valor;
+            document.getElementById(`slider-juros-${playerIndex}`).value = valor;
+            document.getElementById(`val-juros-${playerIndex}`).innerText = valor.toFixed(2);
+        } else if (tipo === 'investimento') {
+            players[playerIndex].investimentoPublico = valor;
+            document.getElementById(`slider-investimentoPublico-${playerIndex}`).value = valor;
+            document.getElementById(`val-investimentoPublico-${playerIndex}`).innerText = valor.toFixed(2);
+        } else if (tipo === 'cargaTributaria') {
+            players[playerIndex].cargaTributaria = valor;
+            document.getElementById(`slider-cargaTributaria-${playerIndex}`).value = valor;
+            document.getElementById(`val-cargaTributaria-${playerIndex}`).innerText = valor.toFixed(2);
+        }
+        
+        // Atualiza as sugestões após aplicar uma mudança
+        atualizarSugestoes(players[playerIndex], playerIndex);
+        renderSugestoes();
+        // Reinicia o contador para evitar outra atualização imediata
+        contadorAtualizacaoSugestoes = 0;
+    }
+
+   // Função para emitir títulos
+    function emitirTitulos(playerIndex) {
+        const emissaoSliderId = `slider-emissao-${playerIndex}`;
+        const valor = parseInt(document.getElementById(emissaoSliderId).value) * 1_000_000_000;
+        
+        // Taxa de juros de mercado depende da proporção dívida/PIB
+        const player = players[playerIndex];
+        const spreadRisco = Math.max(0, (player.dividaPublica / player.pib - 0.6) * 100);
+        const taxaJurosMercado = player.juros + spreadRisco / 100;
+        
+        // Efeito na taxa de juros quando emite muitos títulos de uma vez
+        const impactoEmissao = valor / player.pib * 10;
+        
+        // Salvar o valor anterior do caixa (para debug/verificação)
+        const caixaAnterior = player.caixa;
+        
+        // Atualizamos os valores persistentes do jogador
+        const valorComImpacto = valor * (1 + impactoEmissao/100);
+        player.caixa += valor;
+        player.dividaPublica += valorComImpacto;
+        
+        // Se o Auto Play estiver ativo, pausamos temporariamente
+        let autoPlayEstavaAtivo = false;
+        if (autoPlayActive) {
+            autoPlayEstavaAtivo = true;
+            clearInterval(autoPlayInterval);
+            autoPlayActive = false;
+            document.getElementById("autoPlay").textContent = "Auto Play (1 turno/seg)";
+        }
+        
+        // Atualizamos os indicadores na interface
+        renderIndicadores();
+        
+        // Logging para diagnóstico
+        console.log(`Emissão de títulos - Jogador ${playerIndex+1}:`);
+        console.log(`Caixa antes: $${caixaAnterior/1e9} bilhões`);
+        console.log(`Valor emitido: $${valor/1e9} bilhões`);
+        console.log(`Caixa depois: $${player.caixa/1e9} bilhões`);
+        
+        // Reiniciamos o auto play se estava ativo antes
+        if (autoPlayEstavaAtivo) {
+            setTimeout(() => {
+                autoPlayInterval = setInterval(avancarTurno, 50);
+                autoPlayActive = true;
+                document.getElementById("autoPlay").textContent = "Parar Auto Play";
+            }, 1000); // Esperamos 1 segundo antes de reativar
+        }
+    }
+
+    
+    // Adicione esta função para verificar mudanças no caixa após cada ciclo
+    function avancarTurno() {
+        // Armazenar os valores anteriores do caixa para comparação
+        const caixasAnteriores = players.map(p => p.caixa);
+        
+        turnos++;
+        
+        players.forEach((p, i) => {
+            updatePlayer(p, i);
+            
+            // Atualização do crescimento do PIB a cada 90 rodadas (trimestre)
+            if (turnos % INTERVALO_ATUALIZACAO_TRIMESTRAL === 0) {
+                const crescimentoTrimestral = ((p.pib - p.pibTrimestralAnterior) / p.pibTrimestralAnterior);
+                
+                // Aplicamos um suavizador para evitar picos de crescimento irrealistas
+                const crescimentoSuavizado = crescimentoTrimestral * 0.7; // Suavizamos o crescimento trimestral
+                
+                // CORREÇÃO: Aplicamos limitadores ao crescimento anualizado para evitar valores irrealistas
+                const crescimentoAnualizado = Math.pow(1 + crescimentoSuavizado, 4) - 1; // Anualizado
+                
+                // Limitamos o crescimento entre -5% e +5% anual (valores mais realistas e estáveis)
+                p.crescimentoPIB = Math.max(-5, Math.min(5, crescimentoAnualizado * 100));
+                
+                // IMPORTANTE: Não atualizamos o crescimentoPIBIntrinseco, que permanece constante
+                
+                p.pibTrimestralAnterior = p.pib;
+                
+                // Mantemos um histórico dos últimos 4 valores de crescimento (1 ano)
+                p.historicoCrescimento.push(p.crescimentoPIB);
+                if (p.historicoCrescimento.length > 4) {
+                    p.historicoCrescimento.shift();
+                }
+            }
+            
+            // Verificar mudanças significativas no caixa (para diagnóstico)
+            const diferenca = p.caixa - caixasAnteriores[i];
+            const percentualMudanca = Math.abs(diferenca / caixasAnteriores[i]) * 100;
+            
+            // Logar apenas mudanças significativas (mais de 5%)
+            if (percentualMudanca > 5 && turnos > 1) {
+                console.log(`[Turno ${turnos}] Jogador ${i+1}: Mudança significativa no caixa`);
+                console.log(`Anterior: $${caixasAnteriores[i]/1e9} bi, Atual: $${p.caixa/1e9} bi`);
+                console.log(`Diferença: $${diferenca/1e9} bi (${percentualMudanca.toFixed(2)}%)`);
+            }
+        });
+
+        renderIndicadores();
+
+        // Atualiza sugestões apenas a cada 10 ciclos
+        contadorAtualizacaoSugestoes++;
+        if (contadorAtualizacaoSugestoes >= 10) {
+            renderSugestoes();
+            contadorAtualizacaoSugestoes = 0;
+        } else if(contadorAtualizacaoSugestoes == 1) {
+            renderSugestoes();
+        }
+        
+        atualizarData();
+    }
+    
+    function toggleAutoPlay() {
+        if (autoPlayActive) {
+            clearInterval(autoPlayInterval);
+            autoPlayActive = false;
+            document.getElementById("autoPlay").textContent = "Auto Play (1 turno/seg)";
+        } else {
+            autoPlayInterval = setInterval(avancarTurno, 50);
+            autoPlayActive = true;
+            document.getElementById("autoPlay").textContent = "Parar Auto Play";
+        }
+        }
+
+
+    // Função para adicionar o botão de retirada na interface
+    function adicionarBotaoRetirada() {
+        players.forEach((p, i) => {
+            // Encontrar o elemento do jogador
+            const el = document.getElementById(`player${i + 1}`);
+            
+            // Verificar se o elemento existe e não possui já o botão de retirada
+            if (el && !document.getElementById(`retirada-container-${i}`)) {
+            // Criar um container para o botão e input de retirada
+            const retiradaContainer = document.createElement('div');
+            retiradaContainer.id = `retirada-container-${i}`;
+            retiradaContainer.className = 'slider-group';
+            retiradaContainer.style.marginTop = '15px';
+            
+            // HTML para o container de retirada
+            retiradaContainer.innerHTML = `
+                <hr>
+                <label>RETIRADA ($ bi): 
+                <input type="number" id="valor-retirada-${i}" min="1" max="100" step="1" value="5" style="width: 60px;">
+                </label>
+                <button id="btn-retirada-${i}" onclick="realizarRetirada(${i})">Retirada</button>
+            `;
+            
+            // Adicionar o container ao elemento do jogador
+            el.appendChild(retiradaContainer);
+            }
+        });
+    }
+
+    function realizarRetirada(playerIndex) {
+        // Obter o valor do input
+        const inputElement = document.getElementById(`valor-retirada-${playerIndex}`);
+        const valorRetirada = parseFloat(inputElement.value) * 1_000_000_000; // Converter para bilhões
+        
+        // Referência ao jogador
+        const player = players[playerIndex];
+        
+        // Verificar se há saldo suficiente
+        if (player.caixa < valorRetirada) {
+            alert(`Jogador ${playerIndex + 1} não tem caixa suficiente para esta retirada!`);
+            return;
+        }
+        
+        // Verificar se é uma grande retirada (mais de 30% do caixa atual)
+        const percentualRetirada = valorRetirada / player.caixa;
+        
+        // Subtrair o valor do caixa do jogador
+        player.caixa -= valorRetirada;
+        
+        // Calcular o impacto como percentual do PIB (reduzido)
+        const impactoPIB = valorRetirada / player.pib;
+        
+        // Acumular o total retirado
+        player.totalRetirado += valorRetirada;
+        
+        // Isso faz com que o impacto seja distribuído por 2 anos, sendo menos severo a cada dia
+        player.deducaoDiaria = player.totalRetirado / 730;
+        
+        // Atualizar o histórico de caixa
+        player.historicoCaixa.push(player.caixa);
+        if (player.historicoCaixa.length > 10) player.historicoCaixa.shift();
+        
+        // Atualizar o historico de retiradas total (acumulativo)
+        player.historicoRetiradas += valorRetirada;
+        
+        // Quanto maior a retirada, maior o impacto, mas com efeito reduzido
+        const penalidade = Math.min(0.4, percentualRetirada * 0.75); // Reduzido de 1.5 para 0.75
+        
+        // Tornar o efeito cumulativo menos severo para retiradas sequenciais
+        const novoMultiplicador = player.multiplicadorRecuperacao - penalidade * 0.15; // Reduzido de 0.3 para 0.15
+        player.multiplicadorRecuperacao = Math.max(0.5, novoMultiplicador); // Aumentado o mínimo de 0.3 para 0.5
+        
+        // Ativar flag de perda apenas para retiradas significativas
+        player.grandePerdaCaixa = percentualRetirada > 0.2; // Só ativa para retiradas maiores que 20% do caixa
+        
+        // Reduzir o impacto na recuperação
+        player.limiteRecuperacao = Math.max(0.85, player.limiteRecuperacao - (impactoPIB * 2.5)); // Reduzido de 5 para 2.5
+        
+        // Reduzir o impacto permanente na arrecadação
+        // Isso simula a perda permanente de capacidade produtiva, agora menos severa
+        player.retiradaPermanente += impactoPIB * 50; // Reduzido de 100 para 50
+            
+        // Se for uma grande retirada, aplicar penalidades de longo prazo mais suaves
+        if (percentualRetirada > 0.4) { // Aumentado o limiar de 0.3 para 0.4
+            // Quanto maior a retirada percentual, maior a penalidade (reduzida)
+            const penalidade = Math.min(0.4, percentualRetirada * 0.5); // Reduzido o fator
+            player.multiplicadorRecuperacao = Math.max(0.6, 1 - penalidade); // Aumentado o mínimo de 0.3 para 0.6
+            
+            // Se for uma grande perda, também afeta a confiança do mercado, mas com impacto reduzido
+            if (percentualRetirada > 0.7) { // Aumentado o limiar de 0.6 para 0.7
+                // Aumentar a taxa de juros devido ao aumento do risco percebido
+                const aumentoJuros = percentualRetirada * 1; // Reduzido de 2 para 1
+                player.juros += aumentoJuros;
+                
+                // Atualizar o controle deslizante de juros
+                document.getElementById(`slider-juros-${playerIndex}`).value = player.juros;
+                document.getElementById(`val-juros-${playerIndex}`).innerText = player.juros.toFixed(2);
+                
+                // Pequeno impacto na inflação (reduzido)
+                player.inflacao += percentualRetirada * 0.25; // Reduzido de 0.5 para 0.25
+            }
+        }
+        
+        // Atualizar a interface
+        renderIndicadores();
+        
+        console.log(`Retirada realizada: $${valorRetirada/1e9} bilhões (${(percentualRetirada*100).toFixed(1)}% do caixa)`);
+        console.log(`Novo multiplicador de recuperação: ${player.multiplicadorRecuperacao.toFixed(2)}`);
+        console.log(`Limite de recuperação: ${player.limiteRecuperacao.toFixed(2)}`);
+        console.log(`Impacto permanente: ${player.retiradaPermanente.toFixed(2)}%`);
+        console.log(`Dedução diária: $${(player.deducaoDiaria/1e9).toFixed(2)} bi por dia`);
+    }
+    // Inicialização do jogo
+    prepararControles();
+    renderIndicadores();     
+
+  </script>
+</body>
+</html>

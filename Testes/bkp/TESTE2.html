@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Duelo Econômico</title>
+  <style>
+    body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; background: #000; color:#ccc }
+    .rodada { font-size: 20px; margin-bottom: 20px; font-weight: bold; }
+    .container { display: flex; gap: 40px; }
+    .player { background: #222; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 360px; }
+    h2 { margin-top: 0; }
+    .stat { margin: 5px 0; }
+    .slider-group { margin-top: 10px; }
+    .slider-group label { display: block; margin: 6px 0 2px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="rodada" id="rodada"></div>
+  <div class="container">
+    <div id="player1" class="player"></div>
+    <div id="player2" class="player"></div>
+  </div>
+
+  <script>
+    const players = [
+      {
+        nome: 'Player 1', caixa: 1_000_000, pib: 1_000_000, pibAnterior: 1_000_000, crescimentoPIB: 2,
+        juros: 5, investimentoPublico: 50, popularidade: 50, dividaPublica: 0
+      },
+      {
+        nome: 'Player 2', caixa: 1_000_000, pib: 1_000_000, pibAnterior: 1_000_000, crescimentoPIB: 2,
+        juros: 5, investimentoPublico: 50, popularidade: 50, dividaPublica: 0
+      }
+    ];
+
+    const controles = ['juros', 'investimentoPublico'];
+    let turnos = 0;
+
+    function updatePlayer(p) {
+      if (!p.historicoJuros) p.historicoJuros = Array(10).fill(p.juros);
+      if (!p.historicoInvestimento) p.historicoInvestimento = Array(10).fill(p.investimentoPublico);
+
+      p.historicoJuros.push(p.juros);
+      if (p.historicoJuros.length > 10) p.historicoJuros.shift();
+
+      p.historicoInvestimento.push(p.investimentoPublico);
+      if (p.historicoInvestimento.length > 10) p.historicoInvestimento.shift();
+
+      const variacaoJuros = p.juros - p.historicoJuros[0];
+      const variacaoInvest = p.investimentoPublico - p.historicoInvestimento[0];
+
+      let impactoJuros;
+      if (p.juros <= 5) {
+        const boost = Math.max(0, 5 - p.juros);
+        impactoJuros = 0.00005 * Math.pow(boost, 1.5);
+      } else {
+        const sigmoid = x => 1 / (1 + Math.exp(0.25 * (x - 16)));
+        impactoJuros = (sigmoid(p.juros) - sigmoid(8)) * 0.0015;
+      }
+
+      p.pib += p.pib * (0.000166 + impactoJuros);
+
+      let arrecadacao = p.crescimentoPIB <= 0
+        ? p.pib * 0.00005
+        : p.pib * ((p.crescimentoPIB / 100) * Math.pow(p.juros / 2, 1.5));
+      const receitaJuros = p.caixa * (p.juros / 10000);
+      const investimento = p.investimentoPublico / 100;
+      arrecadacao = arrecadacao * (1 - investimento);
+
+      p.pib += p.pib * (investimento - 0.5) * (investimento > 0.5 ? 0.002 : 0.001);
+
+      // Popularidade
+      let impactoPopularidade = 0;
+      const impactoPIB = (p.crescimentoPIB - 2) * 0.5;
+      impactoPopularidade += impactoPIB;
+      impactoPopularidade += -0.002 * variacaoJuros;
+      impactoPopularidade += -0.001 * (p.juros - 5);
+      impactoPopularidade += 0.005 * variacaoInvest;
+      impactoPopularidade += 0.002 * (p.investimentoPublico - 50);
+      impactoPopularidade *= (1 - p.popularidade / 100);
+      p.popularidade += impactoPopularidade;
+      p.popularidade += (50 - p.popularidade) * 0.02;
+      p.popularidade = Math.max(0, Math.min(100, p.popularidade));
+
+      let gastoInvestimento = p.pib * investimento * 0.2;
+      if (investimento > 0.5) {
+        const excesso = investimento - 0.5;
+        const curva = 1 + Math.pow(excesso * 10, 2);
+        gastoInvestimento *= curva;
+      }
+
+      let saldo = arrecadacao + receitaJuros - gastoInvestimento;
+      p.caixa += saldo;
+      if (p.caixa < 0) {
+        p.dividaPublica += -p.caixa;
+        p.caixa = 0;
+      }
+    }
+
+    function renderControles() {
+      players.forEach((p, i) => {
+        const el = document.getElementById(`player${i + 1}`);
+        const controlsHtml = controles.map(c => `
+          <label>${c.toUpperCase()}: <span id="val-${c}-${i}">${p[c]}</span>%</label>
+          <input type="range" min="0" max="${c === 'investimentoPublico' ? '100' : '20'}" value="${p[c]}" step="1" 
+            onchange="players[${i}].${c} = parseInt(this.value); document.getElementById('val-${c}-${i}').innerText = this.value;" />
+        `).join('');
+
+        const emissaoSliderId = `slider-emissao-${i}`;
+        const emissaoValId = `val-emissao-${i}`;
+
+        el.innerHTML = `
+          <h2>${p.nome}</h2>
+          <div class="stat">Caixa: <span id="caixa-${i}">$${(p.caixa / 1_000_000).toFixed(2)} mi</span></div>
+          <div class="stat">Dívida Pública: <span id="divida-${i}">$${(p.dividaPublica / 1_000_000).toFixed(2)} mi</span></div>
+          <div class="stat">PIB: <span id="pib-${i}">$${(p.pib / 1_000_000).toFixed(2)} mi</span></div>
+          <div class="stat">Crescimento do PIB: <span id="crescimento-${i}">${p.crescimentoPIB.toFixed(2)}%</span></div>
+          <div class="stat">Popularidade: <span id="pop-${i}">${p.popularidade.toFixed(1)}%</span></div>
+          <br />
+          <div class="slider-group">
+            ${controlsHtml}
+            <hr>
+                <label>EMISSÃO DE TÍTULOS ($ mi): <span id="${emissaoValId}">10</span></label>
+                <input type="range" min="1" max="50" step="1" value="10" id="${emissaoSliderId}" 
+                oninput="document.getElementById('${emissaoValId}').innerText = this.value">
+                <button onclick="
+                const valor = parseInt(document.getElementById('${emissaoSliderId}').value) * 1_000_000;
+                players[${i}].caixa += valor;
+                players[${i}].dividaPublica += valor;
+                ">Emitir Títulos</button>
+          </div>
+        `;
+      });
+    }
+
+    function renderIndicadores() {
+      document.getElementById("rodada").innerText = `Rodada: ${turnos}`;
+      players.forEach((p, i) => {
+        document.getElementById(`caixa-${i}`).innerText = `$${(p.caixa / 1_000_000).toFixed(2)} mi`;
+        document.getElementById(`divida-${i}`).innerText = `$${(p.dividaPublica / 1_000_000).toFixed(2)} mi`;
+        document.getElementById(`pib-${i}`).innerText = `$${(p.pib / 1_000_000).toFixed(2)} mi`;
+        document.getElementById(`crescimento-${i}`).innerText = `${p.crescimentoPIB.toFixed(2)}%`;
+        document.getElementById(`pop-${i}`).innerText = `${p.popularidade.toFixed(1)}%`;
+      });
+    }
+
+    // Inicializa a interface
+    renderControles();
+    renderIndicadores();
+
+    // Rodadas automáticas com atualização de indicadores
+    setInterval(() => {
+  turnos++;
+  players.forEach(p => {
+    updatePlayer(p);
+
+    // PAGAMENTO INVERSAMENTE PROPORCIONAL AO INVESTIMENTO
+    let capacidadePagamento = 0.05;
+    let fator = 1 - (p.investimentoPublico / 100);
+    let pagamento = p.pib * capacidadePagamento * fator;
+    pagamento = Math.min(pagamento, p.dividaPublica, p.caixa);
+    p.dividaPublica -= pagamento;
+    p.caixa -= pagamento;
+
+    // REDUÇÃO PASSIVA AUTOMÁTICA
+    let reducaoDivida = p.dividaPublica * ((100 - p.investimentoPublico) / 1000);
+    p.dividaPublica -= reducaoDivida;
+
+    // AMORTIZAÇÃO EXTRA SE TIVER CAIXA
+    if (p.caixa > 0 && p.dividaPublica > 0) {
+      let amortizacaoCaixa = Math.min(p.caixa * 0.02, p.dividaPublica);
+      p.caixa -= amortizacaoCaixa;
+      p.dividaPublica -= amortizacaoCaixa;
+    }
+
+    // CÁLCULO DE CRESCIMENTO DO PIB
+    if (turnos % 90 === 0) {
+      const crescimento = ((p.pib - p.pibAnterior) / p.pibAnterior) * 100;
+      p.crescimentoPIB = crescimento;
+      p.pibAnterior = p.pib;
+    }
+  });
+
+  renderIndicadores();
+}, 400);
+
+  </script>
+</body>
+</html>

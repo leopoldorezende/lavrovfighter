@@ -12,6 +12,19 @@ html, body {
     font-family:'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
 }
 
+
+ul { 
+    margin: 0;
+    padding: 0 0 16px 0;
+  }
+  
+
+ul li { 
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
 #login-screen {
     position: absolute;
     top: 50%;
@@ -153,15 +166,7 @@ html, body {
 
 /* Estilos para a tela de jogo */
 .room-info {
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    border: 1px dashed rgba(0, 0, 0, 0.7);
-    padding: 10px 15px;
-    border-radius: 5px;
-    z-index: 100;
-    display: flex;
-    align-items: center;
+    margin: 16px 0 24px 0
 }
 
 #current-room-display {
@@ -568,4 +573,112 @@ h4 {
   
   .border-status {
     font-weight: bold;
+  }
+
+  /* Estilos para as abas da Sidetools */
+
+/* Aba Política */
+.politics-stats {
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 5px;
+  }
+  
+  .support-info,
+  .opposition-info,
+  .alliances-info {
+    margin-bottom: 15px;
+  }
+  
+  .support-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  
+  .support-item span:first-child {
+    width: 90px;
+    display: inline-block;
+  }
+  
+  .support-item .progress-bar {
+    flex-grow: 1;
+    margin: 0 10px;
+    height: 10px;
+    background-color: #e0e0e0;
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  
+  .support-item .progress-fill {
+    height: 100%;
+    background-color: #4caf50;
+  }
+  
+  .protests-info {
+    margin-top: 10px;
+  }
+  
+  .opposition-info p {
+    margin: 5px 0;
+  }
+  
+  .alliances-info ul {
+    margin: 5px 0;
+    padding-left: 20px;
+  }
+  
+  .alliances-info li {
+    margin-bottom: 5px;
+  }
+  
+  /* Aba Guerra/Militar */
+  .nuclear-status {
+    margin-top: 10px;
+    margin-bottom: 15px;
+  }
+  
+  .status-yes {
+    color: #f44336;
+    font-weight: bold;
+  }
+  
+  .status-no {
+    color: #4caf50;
+  }
+  
+  /* Estilos gerais para sidetools */
+  .sidetools h4 {
+    margin-top: 15px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 5px;
+  }
+  
+  .sidetools .tab-content {
+    max-height: calc(100vh - 180px);
+    overflow-y: auto;
+  }
+  
+  /* Estilo para elementos ajustáveis */
+  .ajustavel {
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  
+  .ajustavel:hover {
+    background-color: rgba(76, 175, 80, 0.1);
+  }
+  
+  /* Responsividade melhorada */
+  @media (max-width: 768px) {
+    .sidetools {
+      width: 90%;
+      max-width: 320px;
+    }
+    
+    .support-item span:first-child {
+      width: 70px;
+    }
   }

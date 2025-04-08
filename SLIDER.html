@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Distribuição de Gastos</title>
+  <link href="https://cdn.jsdelivr.net/npm/nouislider@15.7.0/dist/nouislider.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/nouislider@15.7.0/dist/nouislider.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: #fafafa;
+      padding: 60px;
+      color: #333;
+      max-width: 800px;
+      margin: auto;
+    }
+    h2 {
+      font-weight: 500;
+    }
+    .invest-container {
+        width: 200px;
+    }
+    #chart-container {
+      max-width: 120px;
+      margin: 0 auto;
+    }
+    #multi-slider {
+      margin: 50px 0 20px;
+    }
+    .noUi-connects { height: 6px; border-radius: 3px; overflow: hidden; }
+    .noUi-target { height: 6px; }
+    .noUi-horizontal .noUi-handle {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 2px solid #666;
+      top: -6px; cursor: pointer;
+    }
+    .noUi-handle:before, .noUi-handle:after { display: none; }
+    .noUi-tooltip {
+      display: block;
+      position: absolute;
+      top: -35px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 13px;
+      white-space: nowrap;
+      opacity: 1;
+      transition: opacity 1s ease;
+    }
+    .noUi-handle:hover .noUi-tooltip {
+      opacity: 1;
+    }
+    .noUi-connect:nth-child(1) { background: #f44336; }
+    .noUi-connect:nth-child(2) { background: #3f51b5; }
+    .noUi-connect:nth-child(3) { background: #ff9800; }
+    .fixed-handle {
+      background-color: #e0e0e0 !important;
+      border-color: #999 !important;
+      cursor: not-allowed !important;
+    }
+    .legend {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 14px;
+      margin-bottom: 30px;
+    }
+    .legend span {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .color-box {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="invest-container">
+        <div id="chart-container">
+            <canvas id="donutChart" width="300" height="300"></canvas>
+        </div>
+        
+      <div id="multi-slider"></div>
+
+      <div class="legend">
+          <span><span class="color-box" style="background:#f44336"></span> Serviços Públicos: <strong id="val-servicos">0%</strong></span>
+          <span><span class="color-box" style="background:#3f51b5"></span> P&D: <strong id="val-pd">0%</strong></span>
+          <span><span class="color-box" style="background:#ff9800"></span> Defesa: <strong id="val-defesa">0%</strong></span>
+          <span><span class="color-box" style="background:#6d8a6f"></span> Previdência Social: <strong id="val-previdencia">0%</strong></span>
+          <span><span class="color-box" style="background:#94adaa"></span> Máquina Estatal: <strong id="val-maquina">0%</strong></span>
+          <span><span class="color-box" style="background:#9e9e9e"></span> Dívida Pública: <strong id="val-divida">0%</strong></span>
+      </div>
+
+  </div>
+
+<script>
+  function renderStateSpendingUI(stateSpending) {
+    // Atualiza os valores iniciais na legenda
+    document.getElementById('val-servicos').textContent = `${stateSpending.publicServices}%`;
+    document.getElementById('val-pd').textContent = `${stateSpending.rnd}%`;
+    document.getElementById('val-defesa').textContent = `${stateSpending.defense}%`;
+    document.getElementById('val-previdencia').textContent = `${stateSpending.socialSecurity}%`;
+    document.getElementById('val-maquina').textContent = `${stateSpending.governmentMachine}%`;
+    document.getElementById('val-divida').textContent = `${stateSpending.publicDebt}%`;
+
+    const slider = document.getElementById('multi-slider');
+    const fixoDivida = stateSpending.publicDebt;
+    const fixoPrevidencia = stateSpending.socialSecurity;
+    const fixoMaquina = stateSpending.governmentMachine;
+    const ajustavelTotal = 100 - fixoDivida - fixoPrevidencia - fixoMaquina;
+
+    // Valores iniciais para os três setores ajustáveis
+    let valores = {
+      servicos: stateSpending.publicServices,
+      pd: stateSpending.rnd,
+      defesa: stateSpending.defense
+    };
+
+    // Calcula as posições dos controles do slider
+    function calcularHandles(v) {
+      return [0, v.servicos, v.servicos + v.pd, v.servicos + v.pd + v.defesa];
+    }
+
+    // Inicializa o slider com os valores calculados - configuração correta de tooltips
+    noUiSlider.create(slider, {
+      start: calcularHandles(valores),
+      connect: true,
+      range: { min: 0, max: ajustavelTotal },
+      step: 1,
+      behaviour: 'tap-drag',
+      tooltips: [true, true, true, false]  // Tooltips apenas nos handles 1 e 2 (não nos extremos)
+    });
+
+    // Define os valores máximos e mínimos para controlar o comportamento do slider
+    const originalValues = calcularHandles(valores);
+    const FIRST_HANDLE_VALUE = originalValues[0];
+    const LAST_HANDLE_VALUE = originalValues[3];
+
+    // Adiciona classes para os controles fixos e configura tooltips iniciais
+    setTimeout(() => {
+      const handles = slider.querySelectorAll('.noUi-handle');
+      const tooltips = slider.querySelectorAll('.noUi-tooltip');
+      
+      // Marca os controles fixos
+      if (handles[0]) handles[0].classList.add('fixed-handle');
+      if (handles[3]) handles[3].classList.add('fixed-handle');
+      
+      // Define os valores iniciais dos tooltips
+      if (tooltips[0]) tooltips[0].innerHTML = `${valores.servicos}%`;  // Handle 1: Serviços
+      if (tooltips[1]) tooltips[1].innerHTML = `${valores.pd}%`;        // Handle 2: P&D
+    }, 10);
+
+    // Certifica-se de que os controles fixos não se movam
+    function atualizarSlider() {
+      const values = slider.noUiSlider.get().map(parseFloat);
+      if (values[0] !== FIRST_HANDLE_VALUE || values[3] !== LAST_HANDLE_VALUE) {
+        values[0] = FIRST_HANDLE_VALUE;
+        values[3] = LAST_HANDLE_VALUE;
+        slider.noUiSlider.set(values);
+      }
+    }
+
+    // Impede que os controles fixos sejam movidos
+    slider.noUiSlider.on('start', function(values, handle) {
+      if (handle === 0 || handle === 3) {
+        this.set(this.get());
+        return false;
+      }
+    });
+
+    // Atualiza as porcentagens na legenda e nos tooltips quando o slider é movido
+    slider.noUiSlider.on('update', function(values, handle) {
+      const valuesArray = values.map(parseFloat);
+      
+      // Calcula os valores relativos (diferenças entre os handles)
+      const servicos = Math.round(valuesArray[1] - valuesArray[0]);
+      const pd = Math.round(valuesArray[2] - valuesArray[1]);
+      const defesa = Math.round(valuesArray[3] - valuesArray[2]);
+      
+      // Atualiza os valores na legenda
+      document.getElementById('val-servicos').textContent = `${servicos}%`;
+      document.getElementById('val-pd').textContent = `${pd}%`;
+      document.getElementById('val-defesa').textContent = `${defesa}%`;
+      
+      // Atualiza os valores nos tooltips - indexação correta
+      const tooltips = slider.querySelectorAll('.noUi-tooltip');
+    if (tooltips[0]) tooltips[0].innerHTML = `${servicos}%`;  // Handle 0: Serviços
+    if (tooltips[1]) tooltips[1].innerHTML = `${pd}%`;        // Handle 1: P&D
+    if (tooltips[2]) tooltips[2].innerHTML = `${defesa}%`;    // Handle 2: Defesa
+      
+      atualizarSlider();
+    });
+
+    // Inicializa o gráfico de rosca
+    const donutCtx = document.getElementById('donutChart').getContext('2d');
+    const donutChart = new Chart(donutCtx, {
+      type: 'doughnut',
+      data: {
+        labels: [
+          'Serviços Públicos',
+          'P&D',
+          'Defesa',
+          'Previdência Social',
+          'Máquina Estatal',
+          'Dívida Pública'
+        ],
+        datasets: [{
+          data: [
+            valores.servicos,
+            valores.pd,
+            valores.defesa,
+            fixoPrevidencia,
+            fixoMaquina,
+            fixoDivida
+          ],
+          backgroundColor: [
+            '#f44336',
+            '#3f51b5',
+            '#ff9800',
+            '#6d8a6f',
+            '#94adaa',
+            '#9e9e9e'
+          ],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        cutout: '60%',
+        plugins: { legend: { display: false } }
+      }
+    });
+
+    // Atualiza o gráfico quando o slider é alterado
+    function atualizarGrafico() {
+      const values = slider.noUiSlider.get().map(parseFloat);
+      
+      // Calcula os valores relativos (diferenças entre os handles)
+      const servicos = Math.round(values[1] - values[0]);
+      const pd = Math.round(values[2] - values[1]);
+      const defesa = Math.round(values[3] - values[2]);
+      
+      // Atualiza os dados do gráfico
+      donutChart.data.datasets[0].data = [
+        servicos,
+        pd,
+        defesa,
+        fixoPrevidencia,
+        fixoMaquina,
+        fixoDivida
+      ];
+      donutChart.update();
+    }
+
+    // Atualiza o gráfico quando o slider termina de ser movido
+    slider.noUiSlider.on('change', function() {
+      atualizarGrafico();
+    });
+
+    // Impede cliques nos controles fixos
+    slider.addEventListener('mousedown', function(e) {
+      const handles = slider.querySelectorAll('.noUi-handle');
+      const clickedHandle = e.target.closest('.noUi-handle');
+      if (clickedHandle && (clickedHandle === handles[0] || clickedHandle === handles[3])) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    }, true);
+
+    // Impede toques nos controles fixos (para dispositivos móveis)
+    slider.addEventListener('touchstart', function(e) {
+      const handles = slider.querySelectorAll('.noUi-handle');
+      const clickedHandle = e.target.closest('.noUi-handle');
+      if (clickedHandle && (clickedHandle === handles[0] || clickedHandle === handles[3])) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    }, true);
+
+    // Atualiza o gráfico inicialmente
+    atualizarGrafico();
+  }
+
+  // Inicializa a UI com os valores iniciais
+  document.addEventListener('DOMContentLoaded', function() {
+    const stateSpending = {
+      publicServices: 20,
+      rnd: 2,
+      defense: 4,
+      socialSecurity: 22,
+      governmentMachine: 8,
+      publicDebt: 44
+    };
+    renderStateSpendingUI(stateSpending);
+  });
+</script>
+</body>
+</html>

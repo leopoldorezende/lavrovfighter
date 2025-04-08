@@ -9,7 +9,6 @@ const roomNameInput = document.getElementById('room-name');
 const refreshRoomsButton = document.getElementById('refresh-rooms-button');
 const roomList = document.getElementById('room-list');
 const exitRoomButton = document.getElementById('exit-room-button');
-const currentRoomDisplay = document.getElementById('current-room-display');
 const gameScreen = document.getElementById('game-screen');
 const roomSelectionScreen = document.getElementById('room-selection-screen');
 
@@ -91,8 +90,6 @@ function updateRoomsList(rooms) {
 function updateRoomInfo(roomData) {
   if (!roomData) return;
   
-  // Atualiza o nome da sala no cabeçalho
-  currentRoomDisplay.textContent = roomData.name;
   
   // Atualiza detalhes da sala na aba de informações
   document.getElementById('room-name-display').textContent = roomData.name;

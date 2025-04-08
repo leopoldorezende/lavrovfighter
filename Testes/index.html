@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Duelo Econômico</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="round" id="round">Rodada: 0 (Dia 1)</div>
+  <div class="date" id="date">Data: 01/01/2025</div>
+  <div class="container">
+    <div id="player1" class="player"></div>
+    <div id="player2" class="player"></div>
+    <div id="player3" class="player"></div>
+  </div>
+  
+  <div class="actions">
+    <button id="nextTurn" onclick="advanceTurn()">Próximo Turno</button>
+    <button id="autoPlay" onclick="toggleAutoPlay()">Auto Play (1 turno/seg)</button>
+  </div>
+
+  <!-- Importação de módulos JavaScript com tipo module -->
+  <script type="module">
+    // Importações dos módulos
+    import { prepareControls } from './ui.js';
+    import { renderIndicators } from './render.js';
+    
+    // Inicialização do jogo
+    window.addEventListener('DOMContentLoaded', () => {
+      prepareControls();
+      renderIndicators();
+    });
+  </script>
+</body>
+</html>
