@@ -35,7 +35,7 @@ function loadCountriesCoordinates() {
   return fetch('/countriesCoordinates.json')
     .then(response => response.json())
     .then(data => {
-      console.log('coordenadas carregadadas:', data);
+      console.log('coordenadas carregadas:', data);
       return data;
     })
     .catch(error => {
@@ -44,4 +44,18 @@ function loadCountriesCoordinates() {
     });
 }
 
-export { loadCountriesData, loadCountriesCoordinates, getMapboxToken };
+// Nova função para carregar os dados de rotas do servidor
+function loadRoutesData() {
+  return fetch('/rotas.json')
+    .then(response => response.json())
+    .then(data => {
+      console.log('Rotas carregadas:', data);
+      return data;
+    })
+    .catch(error => {
+      console.error('Erro ao carregar rotas:', error);
+      return null;
+    });
+}
+
+export { loadCountriesData, loadCountriesCoordinates, getMapboxToken, loadRoutesData };
