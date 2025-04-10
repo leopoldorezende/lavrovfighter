@@ -54,6 +54,10 @@
         <div class="tab" data-target="war">
           <span class="material-icons">military_tech</span>
         </div>
+        <!-- Nova aba para navios -->
+        <div class="tab" data-target="ships">
+          <span class="material-icons">directions_boat</span>
+        </div>
       </div>
 
       <!-- Conteúdo das abas -->
@@ -116,6 +120,45 @@
             <button class="action-btn danger">Declarar Guerra</button>
           </div>
         </div>
+
+        <!-- Nova Aba Navios -->
+        <div id="ships" class="tab-content">
+          <div class="ships-info">
+            <h4>Frotas Navais</h4>
+            <p>Cada jogador controla até 3 navios que podem ser posicionados estrategicamente nos oceanos.</p>
+          </div>
+          
+          <div class="my-ships">
+            <h4>Meus Navios</h4>
+            <div id="ships-list">
+              <!-- Lista de navios do jogador gerada dinamicamente -->
+            </div>
+          </div>
+          
+          <div class="ships-actions">
+            <h4>Ações Navais</h4>
+            <div class="ship-buttons">
+              <button id="locate-ships" class="action-btn">Localizar Meus Navios</button>
+              <button id="reset-ships" class="action-btn">Reposicionar Navios</button>
+            </div>
+          </div>
+          
+          <div class="enemy-ships">
+            <h4>Navios Inimigos</h4>
+            <div id="enemy-ships-list">
+              <!-- Lista de navios inimigos gerada dinamicamente -->
+            </div>
+          </div>
+          
+          <div class="ship-instructions">
+            <h4>Instruções</h4>
+            <ul>
+              <li>Arraste navios para movê-los pelo mapa</li>
+              <li>Navios não podem ser posicionados em terra</li>
+              <li>O círculo ao redor do navio representa seu raio de ação</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -166,8 +209,14 @@
     </div>
   </div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <!-- Substitua o antigo script por módulos -->
-  <script type="module" src="client/app.js"></script>
+
+<!-- Alteração no final do arquivo index.html para corrigir os caminhos -->
+
+<script src="/socket.io/socket.io.js"></script>
+
+<script type="module" src="client/chips.js"></script>
+<script type="module" src="client/app.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 </body>
 </html>

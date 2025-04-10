@@ -3,6 +3,7 @@
 import { state } from './state.js';
 import { loadCountriesData, loadCountriesCoordinates, getMapboxToken, loadRoutesData } from './api.js';
 import { displayCountryDetails } from './country-details.js';
+import { initializeShips } from './chips.js'; // Importação do módulo de navios
 
 let countriesCoordinates = {
   customZoomLevels: {},
@@ -45,7 +46,19 @@ async function initializeMap(username) {
       language: "Portuguese",
       center: [0, 0],
       zoom: 1.5,
-      maxZoom: 5.5
+      maxZoom: 5.5,
+      projection: 'globe' // Adicionado para suportar visualização de globo
+    });
+
+    // Adiciona efeito de névoa para melhor visualização dos oceanos
+    state.map.on('style.load', () => {
+      state.map.setFog({
+        'color': 'rgb(217, 230, 255)',
+        'high-color': 'rgb(243, 246, 255)',
+        'horizon-blend': 0.1,
+        'space-color': 'rgb(36, 42, 80)',
+        'star-intensity': 0.4
+      });
     });
 
     state.map.on('load', () => {
@@ -130,7 +143,10 @@ async function initializeMap(username) {
 
       addCountryClickHandler();
 
+      // Inicializa o sistema de navios após o mapa estar completamente carregado
       setTimeout(() => {
+        initializeShips();
+        
         if (state.myCountry) {
           console.log('Centralizando automaticamente no país do jogador:', state.myCountry);
           centerMapOnCountry(state.myCountry);
@@ -148,6 +164,19 @@ function addCountryClickHandler() {
   loadCountriesData().then(countriesData => {
     state.countriesData = countriesData;
     state.map.on('click', (e) => {
+      // Verifica se a camada 'ships-layer' existe antes de consultá-la
+      if (state.map.getLayer('ships-layer')) {
+        // Verifica se clicou em um navio - se sim, não prossegue com a ação do país
+        const shipFeatures = state.map.queryRenderedFeatures(e.point, {
+          layers: ['ships-layer']
+        });
+        
+        if (shipFeatures.length > 0) {
+          // Clicou em um navio, não faz nada com os países
+          return;
+        }
+      }
+      
       e.originalEvent.stopPropagation();
       const sidebar = document.getElementById('sidebar');
       const features = state.map.queryRenderedFeatures(e.point, {
@@ -343,7 +372,7 @@ function displayCountryRoutes(country) {
           count++;
         }
       } else {
-        console.log(`Não há rotas para o país ${country}`);
+        console.log(`Não há rotas para o país ${clickedCountry}`);
       }
     })
     .catch(error => {

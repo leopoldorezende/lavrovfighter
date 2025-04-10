@@ -9,6 +9,7 @@ import { initializeMap } from './map.js';
 import { setupChat } from './chat.js';
 import { loadCountriesData } from './api.js';
 import { updateSidetools } from './economy-updater.js';
+import { initializeShips, setupShipSocketHandlers } from './chips.js'; // Importação do módulo de navios
 
 // Inicializa a aplicação
 function initApp() {
@@ -20,6 +21,9 @@ function initApp() {
   initAuth();
   initRooms();
   initSocketHandlers();
+  
+  // Inicializa os handlers para navios
+  setupShipSocketHandlers();
 
   // Carrega os dados dos países
   loadCountriesData().then(data => {
@@ -32,13 +36,46 @@ function initApp() {
     }
   });
   
-  // Quando um usuário entra em uma sala, inicializa o mapa e o chat
+  // Quando um usuário entra em uma sala, inicializa o mapa, o chat e os navios
   socket.on('roomJoined', (roomData) => {
     // Inicializa o mapa
     initializeMap(socket.username);
     
     // Inicializa o chat
     setupChat(socket.username);
+    
+    // Verifica se o mapa já existe
+    if (state.map) {
+      // Se o mapa já está carregado, inicializa os navios imediatamente
+      if (state.map.loaded()) {
+        console.log('Mapa já carregado, inicializando sistema de navios...');
+        initializeShips();
+      } else {
+        // Se o mapa existe mas não está carregado, aguarda o evento 'load'
+        state.map.once('load', () => {
+          console.log('Mapa carregado, inicializando sistema de navios...');
+          initializeShips();
+        });
+      }
+    } else {
+      // Se o mapa não existe, configura um temporizador para verificar novamente
+      console.log('Mapa não inicializado, aguardando...');
+      const checkMapInterval = setInterval(() => {
+        if (state.map) {
+          clearInterval(checkMapInterval);
+          if (state.map.loaded()) {
+            console.log('Mapa agora disponível e carregado, inicializando sistema de navios...');
+            initializeShips();
+          } else {
+            state.map.once('load', () => {
+              console.log('Mapa agora disponível e carregado, inicializando sistema de navios...');
+              initializeShips();
+            });
+          }
+        }
+      }, 500); // Verifica a cada 500ms
+    }
+    
     
     // Garante que a aba de economia esteja aberta por padrão
     setTimeout(() => {
@@ -64,40 +101,6 @@ function initApp() {
     // Inicializa listeners de eventos para a interface econômica
     initializeEconomyListeners();
   });
-
-  // Quando um usuário entra em uma sala, inicializa o mapa e o chat
-  socket.on('roomJoined', (roomData) => {
-    // Inicializa o mapa
-    initializeMap(socket.username);
-    
-    // Inicializa o chat
-    setupChat(socket.username);
-    
-    // Garante que a aba de economia esteja aberta por padrão
-    setTimeout(() => {
-      const sidetools = document.getElementById('sidetools');
-      sidetools.classList.add('active');
-      
-      // Certifica-se que a aba economia está ativa
-      const economyTab = document.querySelector('.tab[data-target="economy"]');
-      const economyContent = document.getElementById('economy');
-      
-      // Ativa a aba de economia na sidetools
-      document.querySelectorAll('#sidetools .tab').forEach(tab => tab.classList.remove('active'));
-      if (economyTab) economyTab.classList.add('active');
-      
-      // Ativa o conteúdo da economia na sidetools
-      document.querySelectorAll('#sidetools .tab-content').forEach(content => content.classList.remove('active'));
-      if (economyContent) economyContent.classList.add('active');
-    }, 1000);
-  });
-  
-  // Adiciona event listeners para os botões de ações econômicas
-  document.addEventListener('DOMContentLoaded', () => {
-    // Inicializa listeners de eventos para a interface econômica
-    initializeEconomyListeners();
-  });
-
 
   // Inicializa event listeners para a interface econômica
   function initializeEconomyListeners() {
@@ -151,26 +154,6 @@ function initApp() {
       }
     });
   }
-
-  // Exemplo: Listener para botões de diplomacia
-  const diplomaticBtns = document.querySelectorAll('.diplomacy-options .action-btn');
-  diplomaticBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const targetSelect = document.getElementById('country-select');
-      const target = targetSelect.value;
-      
-      if (!target) {
-        alert('Selecione um país-alvo primeiro.');
-        return;
-      }
-      
-      const action = btn.textContent.trim();
-      console.log(`Ação diplomática: ${action} com ${target}`);
-      
-      // Aqui você pode implementar a lógica para as ações diplomáticas
-      // Por exemplo, emitir um evento para o servidor
-    });
-  });
 }
 
 // Executa a inicialização quando o DOM estiver carregado

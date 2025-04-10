@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Mapa de Navios Simplificado</title>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="status-message"></div>
+  <script>
+    // Configurações principais
+    const CONFIG = {
+      mapboxToken: 'pk.eyJ1IjoibGVvcG9sZG9yZXplbmRlIiwiYSI6ImNqOG9zaXVyazA3anozNG8weTVrcnl4NDgifQ._89Jf3MABokdSiU0fqX84w',
+      actionRadius: 500,
+      mapStyles: 'mapbox://styles/mapbox/light-v11',
+      initialCenter: [0, 0],
+      initialZoom: 1.5
+    };
+
+    // Dados dos navios
+    const shipData = {
+      type: 'FeatureCollection',
+      features: [
+        { type: 'Feature', properties: { id: 0, name: 'Brasil', color: '#3366CC' }, geometry: { type: 'Point', coordinates: [-40.5, -15.0] } },
+        { type: 'Feature', properties: { id: 1, name: 'Italia', color: '#33cc33' }, geometry: { type: 'Point', coordinates: [-10.5, -25.0] } },
+        { type: 'Feature', properties: { id: 2, name: 'China', color: '#CC6633' }, geometry: { type: 'Point', coordinates: [-0.5, 5.0] } }
+      ]
+    };
+
+    // Estado da aplicação
+    const appState = {
+      map: null,
+      landGeojson: null,
+      isDragging: false,
+      draggedShipId: null,
+      updateRequested: false,
+      newCoordinates: null
+    };
+
+    // Pontos de oceano conhecidos para fallback
+    const OCEAN_POINTS = [
+      [-40, -30], // Atlântico Sul
+      [0, 0],     // Atlântico Central
+      [160, 0],   // Pacífico
+      [90, 0],    // Índico
+      [-150, 30]  // Pacífico Norte
+    ];
+
+    // Layers de terra para detecção
+    const LAND_LAYER_IDS = [
+      'land', 'land-structure-polygon', 'landcover', 'landuse',
+      'national-park', 'parks', 'hillshade', 'mountain', 'land-polygon'
+    ];
+
+    // Objeto que encapsula todas as funcionalidades relacionadas aos navios
+    const ShipManager = {
+      // Dados dos navios (referência ao objeto global)
+      data: shipData,
+      
+      // Adiciona a fonte de dados dos navios ao mapa
+      addSource: function() {
+        appState.map.addSource('ships', { type: 'geojson', data: this.data });
+      },
+      
+      // Carrega o ícone do navio
+      loadIcon: function() {
+        const shipIcon = new Image();
+        const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500" width="40" height="40">
+            <path d="M50,250 L200,400 L800,400 L950,250 L800,100 L200,100 Z" fill="#ccc" stroke="#333" stroke-width="10"/>
+            <rect x="350" y="150" width="300" height="200" fill="#777" stroke="#333" stroke-width="5"/>
+            <rect x="450" y="50" width="100" height="100" fill="#777" stroke="#333" stroke-width="5"/>
+            <circle cx="200" cy="250" r="50" fill="#777" stroke="#fff" stroke-width="5"/>
+            <circle cx="800" cy="250" r="50" fill="#aaa" stroke="#fff" stroke-width="5"/>
+            <rect x="500" y="150" width="0" height="200" fill="#fff" stroke="#fff" stroke-width="20"/>
+          </svg>`;
+        const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        shipIcon.onload = () => {
+          appState.map.addImage('ship-icon', shipIcon, { pixelRatio: 2 });
+          appState.map.addLayer({
+            id: 'ships-layer',
+            type: 'symbol',
+            source: 'ships',
+            layout: {
+              'icon-image': 'ship-icon',
+              'icon-size': 2,
+              'icon-allow-overlap': true,
+              'text-field': ['get', 'name'],
+              'text-offset': [0, 1.2],
+              'text-anchor': 'top'
+            }
+          });
+        };
+        shipIcon.src = url;
+      },
+      
+      // Cria ou atualiza o círculo geodésico para representar o raio de ação
+      createGeodesicCircle: function(center, radiusKm, color, id) {
+        const options = { steps: 256, units: 'kilometers' };
+        const circle = turf.circle(center, radiusKm, options);
+        if (appState.map.getSource(`radius-source-${id}`)) {
+          appState.map.getSource(`radius-source-${id}`).setData(circle);
+        } else {
+          appState.map.addSource(`radius-source-${id}`, { type: 'geojson', data: circle });
+          appState.map.addLayer({
+            id: `radius-fill-${id}`,
+            type: 'fill',
+            source: `radius-source-${id}`,
+            paint: { 'fill-color': color, 'fill-opacity': 0.15 }
+          });
+          appState.map.addLayer({
+            id: `radius-border-${id}`,
+            type: 'line',
+            source: `radius-source-${id}`,
+            layout: { 'line-cap': 'round', 'line-join': 'round' },
+            paint: { 'line-color': color, 'line-width': 0, 'line-opacity': 0.8 }
+          });
+        }
+      },
+      
+      // Atualiza o círculo de raio para um navio específico
+      updateRadiusCircle: function(id) {
+        const feature = this.data.features.find(f => f.properties.id == id);
+        if (feature) this.createGeodesicCircle(feature.geometry.coordinates, CONFIG.actionRadius, feature.properties.color, id);
+      },
+      
+      // Atualiza os círculos de raio para todos os navios
+      updateAllRadiusCircles: function() {
+        this.data.features.forEach(feature => this.updateRadiusCircle(feature.properties.id));
+      },
+      
+      // Atualiza as coordenadas de um navio específico
+      updateCoordinates: function(shipId, coordinates) {
+        this.data.features = this.data.features.map(feature => {
+          if (feature.properties.id == shipId) {
+            feature.geometry.coordinates = coordinates;
+          }
+          return feature;
+        });
+        
+        appState.map.getSource('ships').setData(this.data);
+        this.updateRadiusCircle(shipId);
+      },
+      
+      // Verifica se o navio está em terra e o reposiciona se necessário
+      handleShipPositioning: function(shipId, coordinates) {
+        let finalCoordinates = coordinates;
+        
+        if (appState.landGeojson && TerrainManager.isPointOnLand(coordinates)) {
+          finalCoordinates = TerrainManager.findNearestCoast(coordinates);
+        } else if (!appState.landGeojson) {
+          finalCoordinates = TerrainManager.emergencyRelocate(coordinates);
+        }
+        
+        this.updateCoordinates(shipId, finalCoordinates);
+      }
+    };
+    
+    // Objeto que gerencia funcionalidades relacionadas ao terreno
+    const TerrainManager = {
+      // Carrega os contornos de terra
+      loadLandBoundaries: async function() {
+        try {
+          const response = await fetch('https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_110m_land.geojson');
+          const data = await response.json();
+          return data;
+        } catch (err) {
+          console.error("Erro ao carregar contornos de terra:", err);
+          return null;
+        }
+      },
+      
+      // Verifica se um ponto está em terra
+      isPointOnLand: function(point) {
+        if (!appState.landGeojson) return false;
+        
+        try {
+          const pointFeature = turf.point(point);
+          for (const feature of appState.landGeojson.features) {
+            if (turf.booleanPointInPolygon(pointFeature, feature)) {
+              return true;
+            }
+          }
+          return false;
+        } catch (e) {
+          console.error("Erro ao verificar terreno:", e);
+          return false;
+        }
+      },
+      
+      // Encontra o ponto mais próximo no litoral
+      findNearestCoast: function(point) {
+        if (!appState.landGeojson) return point;
+        
+        try {
+          let minDistance = Infinity;
+          let closestPoint = point;
+          
+          for (const feature of appState.landGeojson.features) {
+            let coastline;
+            
+            if (feature.geometry.type === 'Polygon') {
+              coastline = feature.geometry.coordinates[0];
+            } else if (feature.geometry.type === 'MultiPolygon') {
+              coastline = [];
+              for (const polygon of feature.geometry.coordinates) {
+                coastline = coastline.concat(polygon[0]);
+              }
+            } else {
+              continue;
+            }
+            
+            for (const coastPoint of coastline) {
+              const distance = turf.distance(point, coastPoint, {units: 'kilometers'});
+              
+              if (distance < minDistance) {
+                minDistance = distance;
+                closestPoint = coastPoint;
+              }
+            }
+          }
+          
+          const dx = point[0] - closestPoint[0];
+          const dy = point[1] - closestPoint[1];
+          
+          const length = Math.sqrt(dx*dx + dy*dy);
+          const ux = dx / length;
+          const uy = dy / length;
+          
+          const offsetDistance = 2.0;
+          const offshorePoint = [
+            closestPoint[0] - ux * offsetDistance,
+            closestPoint[1] - uy * offsetDistance
+          ];
+          
+          if (this.isPointOnLand(offshorePoint)) {
+            return [
+              closestPoint[0] - ux * offsetDistance * 3,
+              closestPoint[1] - uy * offsetDistance * 3
+            ];
+          }
+          
+          return offshorePoint;
+        } catch (e) {
+          console.error("Erro ao encontrar litoral:", e);
+          return point;
+        }
+      },
+      
+      // Solução de emergência para relocalizar navios
+      emergencyRelocate: function(point) {
+        let minDistance = Infinity;
+        let bestPoint = OCEAN_POINTS[0];
+        
+        for (const oceanPoint of OCEAN_POINTS) {
+          const distance = turf.distance(point, oceanPoint, {units: 'kilometers'});
+          if (distance < minDistance) {
+            minDistance = distance;
+            bestPoint = oceanPoint;
+          }
+        }
+        
+        return bestPoint;
+      },
+      
+      // Verificação de terra usando o estilo do mapa
+      checkIfOnLandUsingMapStyles: function(e) {
+        if (!appState.map.loaded()) return false;
+        
+        const features = appState.map.queryRenderedFeatures(e.point);
+        
+        for (const feature of features) {
+          if (LAND_LAYER_IDS.includes(feature.layer.id) || 
+              (feature.properties && 
+              (feature.properties.class === 'land' || 
+                feature.properties.class === 'landcover' || 
+                feature.properties.class === 'park'))) {
+            return true;
+          }
+        }
+        
+        return false;
+      }
+    };
+
+    // Inicializa o mapa
+    function initializeMap() {
+      mapboxgl.accessToken = CONFIG.mapboxToken;
+      
+      appState.map = new mapboxgl.Map({
+        container: 'map',
+        style: CONFIG.mapStyles,
+        center: CONFIG.initialCenter,
+        zoom: CONFIG.initialZoom,
+        projection: 'globe'
+      });
+      
+      appState.map.on('load', handleMapLoad);
+      appState.map.on('mousedown', handleMouseDown);
+      appState.map.on('mousemove', handleMouseMove);
+      appState.map.on('mouseup', handleMouseUp);
+      appState.map.on('mouseleave', handleMouseLeave);
+    }
+
+    // Manipulador do evento load do mapa
+    async function handleMapLoad() {
+      setMapFog();
+      appState.landGeojson = await TerrainManager.loadLandBoundaries();
+      ShipManager.addSource();
+      ShipManager.loadIcon();
+      ShipManager.updateAllRadiusCircles();
+    }
+
+    // Configura o efeito de névoa no mapa
+    function setMapFog() {
+      appState.map.setFog({
+        'color': 'rgb(217, 230, 255)',
+        'high-color': 'rgb(243, 246, 255)',
+        'horizon-blend': 0.1,
+        'space-color': 'rgb(36, 42, 80)',
+        'star-intensity': 0.4
+      });
+    }
+
+    // Manipulador do evento mousedown
+    function handleMouseDown(e) {
+      const features = appState.map.queryRenderedFeatures(e.point, { layers: ['ships-layer'] });
+      if (!features.length) return;
+      
+      e.preventDefault();
+      appState.isDragging = true;
+      appState.draggedShipId = features[0].properties.id;
+      appState.map.getCanvas().style.cursor = 'grabbing';
+    }
+
+    // Manipulador do evento mousemove
+    function handleMouseMove(e) {
+      if (!appState.isDragging) return;
+      
+      appState.newCoordinates = [e.lngLat.lng, e.lngLat.lat];
+      
+      if (!appState.updateRequested) {
+        appState.updateRequested = true;
+        requestAnimationFrame(() => {
+          ShipManager.updateCoordinates(appState.draggedShipId, appState.newCoordinates);
+          appState.updateRequested = false;
+        });
+      }
+    }
+
+    // Manipulador do evento mouseup
+    function handleMouseUp(e) {
+      if (!appState.isDragging) return;
+      
+      const coordinates = [e.lngLat.lng, e.lngLat.lat];
+      ShipManager.handleShipPositioning(appState.draggedShipId, coordinates);
+      
+      appState.isDragging = false;
+      appState.draggedShipId = null;
+      appState.map.getCanvas().style.cursor = '';
+    }
+
+    // Manipulador do evento mouseleave
+    function handleMouseLeave() {
+      if (!appState.isDragging) return;
+      
+      appState.isDragging = false;
+      appState.draggedShipId = null;
+      appState.map.getCanvas().style.cursor = '';
+    }
+
+    // Inicializar a aplicação
+    initializeMap();
+  </script>
+</body>
+</html>

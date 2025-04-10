@@ -5,6 +5,7 @@ const fs = require('fs');
 const { setupRoomHandlers } = require('./server/server-rooms');
 const { setupChatHandlers } = require('./server/server-chat');
 const { setupPlayerHandlers } = require('./server/server-players');
+const { setupShipHandlers } = require('./server/server-chips'); // Importação do módulo de navios
 require('dotenv').config();
 
 // Inicialização Express e Socket.io
@@ -66,6 +67,7 @@ const gameState = {
   userToRoom: new Map(), // Mapeamento de usuário para sala atual
   userRoomCountries: new Map(), // Mapeamento de "usuario:sala" para país atribuído
   countriesData: countriesData,
+  ships: new Map(), // Mapa para armazenar os navios por sala
   MAX_CHAT_HISTORY: MAX_CHAT_HISTORY,
   createRoom: createRoom,
   getPrivateChatKey: getPrivateChatKey
@@ -79,6 +81,7 @@ io.on('connection', (socket) => {
   setupRoomHandlers(io, socket, gameState);
   setupChatHandlers(io, socket, gameState);
   setupPlayerHandlers(io, socket, gameState);
+  setupShipHandlers(io, socket, gameState); // Adiciona handlers para navios
   
   // Handler de desconexão
   socket.on('disconnect', () => {
@@ -114,6 +117,9 @@ io.on('connection', (socket) => {
                 gameState.userRoomCountries.delete(key);
               }
             }
+            
+            // Remove os navios da sala
+            gameState.ships.delete(roomName);
             
             io.emit('roomsList', Array.from(gameState.rooms.entries()).map(([name, room]) => ({
               name,

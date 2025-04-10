@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Drag and Drop dos Navios (Realocação para Litoral)</title>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    #info-panel {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      background: white;
+      padding: 10px;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      z-index: 3;
+      font-family: Arial, sans-serif;
+      max-width: 300px;
+    }
+    #radius-control {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: white;
+      padding: 10px;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      z-index: 3;
+      font-family: Arial, sans-serif;
+      width: 200px;
+    }
+    #status-message {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(255,255,255,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      z-index: 3;
+      font-family: Arial, sans-serif;
+      max-width: 300px;
+      display: none;
+    }
+    #radius-slider { width: 100%; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="info-panel">
+    <h3>Posição dos Navios</h3>
+    <div id="ship-positions"></div>
+  </div>
+  <div id="radius-control">
+    <h4>Raio de Ação (km)</h4>
+    <input type="range" id="radius-slider" min="50" max="2000" step="50" value="500">
+    <div id="radius-value">500 km</div>
+  </div>
+  <div id="status-message"></div>
+  <script>
+    mapboxgl.accessToken = 'pk.eyJ1IjoibGVvcG9sZG9yZXplbmRlIiwiYSI6ImNqOG9zaXVyazA3anozNG8weTVrcnl4NDgifQ._89Jf3MABokdSiU0fqX84w';
+    
+    const map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/mapbox/light-v11',
+      center: [0, 0],
+      zoom: 1.5,
+      projection: 'globe'
+    });
+    
+    const shipData = {
+      type: 'FeatureCollection',
+      features: [
+        { type: 'Feature', properties: { id: 0, name: 'Brasil', color: '#3366CC' }, geometry: { type: 'Point', coordinates: [-40.5, -15.0] } },
+        { type: 'Feature', properties: { id: 1, name: 'Italia', color: '#33cc33' }, geometry: { type: 'Point', coordinates: [-10.5, -25.0] } },
+        { type: 'Feature', properties: { id: 2, name: 'China', color: '#CC6633' }, geometry: { type: 'Point', coordinates: [-0.5, 5.0] } }
+      ]
+    };
+    
+    let actionRadius = 500;
+    
+    function updatePositionsPanel() {
+      const panel = document.getElementById('ship-positions');
+      panel.innerHTML = '';
+      shipData.features.forEach(feature => {
+        const coords = feature.geometry.coordinates;
+        panel.innerHTML += `<div><strong>${feature.properties.name}:</strong> [${coords[0].toFixed(2)}, ${coords[1].toFixed(2)}]</div>`;
+      });
+    }
+    
+    // Cria ou atualiza o círculo sem removê-lo – mantendo-o visível durante o drag.
+    function createGeodesicCircle(center, radiusKm, color, id) {
+      const options = { steps: 256, units: 'kilometers' };
+      const circle = turf.circle(center, radiusKm, options);
+      if (map.getSource(`radius-source-${id}`)) {
+        map.getSource(`radius-source-${id}`).setData(circle);
+      } else {
+        map.addSource(`radius-source-${id}`, { type: 'geojson', data: circle });
+        map.addLayer({
+          id: `radius-fill-${id}`,
+          type: 'fill',
+          source: `radius-source-${id}`,
+          paint: { 'fill-color': color, 'fill-opacity': 0.15 }
+        });
+        map.addLayer({
+          id: `radius-border-${id}`,
+          type: 'line',
+          source: `radius-source-${id}`,
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: { 'line-color': color, 'line-width': 1.5, 'line-opacity': 0.8 }
+        });
+      }
+    }
+    
+    function updateRadiusCircle(id) {
+      const feature = shipData.features.find(f => f.properties.id == id);
+      if (feature) createGeodesicCircle(feature.geometry.coordinates, actionRadius, feature.properties.color, id);
+    }
+    
+    function updateAllRadiusCircles() {
+      shipData.features.forEach(feature => updateRadiusCircle(feature.properties.id));
+    }
+    
+    function setupRadiusControl() {
+      const slider = document.getElementById('radius-slider');
+      const valueDisplay = document.getElementById('radius-value');
+      slider.addEventListener('input', (e) => {
+        actionRadius = parseInt(e.target.value);
+        valueDisplay.textContent = `${actionRadius} km`;
+        updateAllRadiusCircles();
+      });
+    }
+
+    // Função para mostrar mensagem de status
+    function showStatusMessage(message, duration = 3000) {
+      const statusElement = document.getElementById('status-message');
+      statusElement.textContent = message;
+      statusElement.style.display = 'block';
+      
+      setTimeout(() => {
+        statusElement.style.display = 'none';
+      }, duration);
+    }
+
+    // Função para verificar se o ponto está em terra ou mar
+    function isPointOnLand(point) {
+      // Obtém os dados de terreno a partir do mapa
+      try {
+        const features = map.queryRenderedFeatures(
+          map.project(point),
+          { layers: ['land', 'water'] }
+        );
+        
+        // Se não houver features, assumimos que é oceano (caso comum em zoom baixo)
+        if (!features.length) return false;
+        
+        // Verificamos se alguma das features é terra
+        return features.some(feature => 
+          feature.layer.id === 'land' || 
+          (feature.properties && feature.properties.class === 'land')
+        );
+      } catch (e) {
+        console.error("Erro ao verificar terreno:", e);
+        return false; // Em caso de erro, assumimos oceano
+      }
+    }
+
+    // Função para encontrar o ponto mais próximo no litoral
+    async function findNearestCoast(point) {
+      // Definimos uma grade de pontos ao redor do ponto original
+      // para procurar pelo litoral mais próximo
+      const searchRadius = 5; // graus
+      const gridDensity = 20; // número de pontos em cada direção
+      
+      let bestPoint = point;
+      let minDistance = Infinity;
+      let foundCoast = false;
+      
+      // Criamos uma grade de pontos para busca
+      for (let i = 0; i <= gridDensity; i++) {
+        for (let j = 0; j <= gridDensity; j++) {
+          const lng = point[0] - searchRadius + (2 * searchRadius * i / gridDensity);
+          const lat = point[1] - searchRadius + (2 * searchRadius * j / gridDensity);
+          const testPoint = [lng, lat];
+          
+          // Verificamos se o ponto está em terra
+          const onLand = isPointOnLand(testPoint);
+          
+          // Se não está em terra (está no mar)
+          if (!onLand) {
+            // Verificamos se está próximo à terra (verificando pontos vizinhos)
+            const step = searchRadius / gridDensity / 2;
+            const neighbors = [
+              [lng + step, lat], 
+              [lng - step, lat], 
+              [lng, lat + step], 
+              [lng, lat - step]
+            ];
+            
+            let isCoast = false;
+            for (const neighbor of neighbors) {
+              if (isPointOnLand(neighbor)) {
+                isCoast = true;
+                break;
+              }
+            }
+            
+            if (isCoast) {
+              // Calculamos a distância até o ponto original
+              const distance = turf.distance(point, testPoint, {units: 'kilometers'});
+              
+              if (distance < minDistance) {
+                minDistance = distance;
+                bestPoint = testPoint;
+                foundCoast = true;
+              }
+            }
+          }
+        }
+      }
+      
+      // Se não encontrarmos nenhum litoral na grade, mantemos o ponto original
+      if (!foundCoast) {
+        // Busca simplificada - apenas afasta um pouco do continente
+        const directions = [
+          [1, 0], [-1, 0], [0, 1], [0, -1],
+          [1, 1], [-1, 1], [1, -1], [-1, -1]
+        ];
+        
+        for (const [dx, dy] of directions) {
+          const testPoint = [point[0] + dx * 5, point[1] + dy * 5];
+          if (!isPointOnLand(testPoint)) {
+            return testPoint;
+          }
+        }
+      }
+      
+      return bestPoint;
+    }
+    
+    map.on('load', () => {
+      map.setFog({
+        'color': 'rgb(217, 230, 255)',
+        'high-color': 'rgb(243, 246, 255)',
+        'horizon-blend': 0.1,
+        'space-color': 'rgb(36, 42, 80)',
+        'star-intensity': 0.4
+      });
+      
+      map.addSource('ships', { type: 'geojson', data: shipData });
+      
+      const shipIcon = new Image();
+      // Use cores de "stroke" e "fill" coerentes no SVG.
+      const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500" width="40" height="40">
+          <path d="M50,250 L200,400 L800,400 L950,250 L800,100 L200,100 Z" fill="#ccc" stroke="#333" stroke-width="10"/>
+          <rect x="350" y="150" width="300" height="200" fill="#777" stroke="#333" stroke-width="5"/>
+          <rect x="450" y="50" width="100" height="100" fill="#777" stroke="#333" stroke-width="5"/>
+          <circle cx="200" cy="250" r="50" fill="#777" stroke="#fff" stroke-width="5"/>
+          <circle cx="800" cy="250" r="50" fill="#aaa" stroke="#fff" stroke-width="5"/>
+          <rect x="500" y="150" width="0" height="200" fill="#fff" stroke="#fff" stroke-width="20"/>
+        </svg>`;
+      const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      shipIcon.onload = () => {
+        map.addImage('ship-icon', shipIcon, { pixelRatio: 2 });
+        map.addLayer({
+          id: 'ships-layer',
+          type: 'symbol',
+          source: 'ships',
+          layout: {
+            'icon-image': 'ship-icon',
+            'icon-size': 2, // 2x maior
+            'icon-allow-overlap': true,
+            'text-field': ['get', 'name'],
+            'text-offset': [0, 1.2],
+            'text-anchor': 'top'
+          }
+        });
+      };
+      shipIcon.src = url;
+      
+      setupRadiusControl();
+      updatePositionsPanel();
+      updateAllRadiusCircles();
+    });
+    
+    // Variáveis para controle do drag com requestAnimationFrame.
+    let isDragging = false;
+    let draggedShipId = null;
+    let updateRequested = false;
+    let newCoordinates = null;
+    
+    map.on('mousedown', (e) => {
+      const features = map.queryRenderedFeatures(e.point, { layers: ['ships-layer'] });
+      if (!features.length) return;
+      e.preventDefault();
+      isDragging = true;
+      draggedShipId = features[0].properties.id;
+      map.getCanvas().style.cursor = 'grabbing';
+    });
+    
+    map.on('mousemove', (e) => {
+      if (!isDragging) return;
+      newCoordinates = [e.lngLat.lng, e.lngLat.lat];
+      if (!updateRequested) {
+        updateRequested = true;
+        requestAnimationFrame(() => {
+          shipData.features = shipData.features.map(feature => {
+            if (feature.properties.id == draggedShipId) {
+              feature.geometry.coordinates = newCoordinates; 
+            }
+            return feature;
+          });
+          map.getSource('ships').setData(shipData);
+          updateRadiusCircle(draggedShipId);
+          updatePositionsPanel();
+          updateRequested = false;
+        });
+      }
+    });
+    
+    map.on('mouseup', async (e) => {
+      if (!isDragging) return;
+      
+      const coordinates = [e.lngLat.lng, e.lngLat.lat];
+      
+      // Verificamos se o navio foi solto em terra
+      if (isPointOnLand(coordinates)) {
+        showStatusMessage("Navio em continente! Realocando para o litoral mais próximo...");
+        
+        // Encontramos o litoral mais próximo
+        const coastPoint = await findNearestCoast(coordinates);
+        
+        // Atualizamos as coordenadas do navio
+        shipData.features = shipData.features.map(feature => {
+          if (feature.properties.id == draggedShipId) {
+            feature.geometry.coordinates = coastPoint;
+            showStatusMessage(`Navio ${feature.properties.name} realocado para o litoral!`);
+          }
+          return feature;
+        });
+        
+        // Atualizamos a visualização
+        map.getSource('ships').setData(shipData);
+        updateRadiusCircle(draggedShipId);
+        updatePositionsPanel();
+      }
+      
+      isDragging = false;
+      draggedShipId = null;
+      map.getCanvas().style.cursor = '';
+    });
+    
+    map.on('mouseleave', () => {
+      if (!isDragging) return;
+      isDragging = false;
+      draggedShipId = null;
+      map.getCanvas().style.cursor = '';
+    });
+  </script>
+</body>
+</html>

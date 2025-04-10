@@ -5,6 +5,7 @@ import { updateRoomsList, updateRoomInfo } from './rooms.js';
 import { centerMapOnCountry } from './map.js';
 import { displayMessage, displayChatHistory, updatePlayerList } from './chat.js';
 import { updateSidetools } from './economy-updater.js';  // Adicionado para atualizar a sidetools
+import { updateShips, addShip } from './chips.js';       // Importa funções de gerenciamento de navios
 
 // Inicializa o socket
 const socket = io();
@@ -139,6 +140,18 @@ function initSocketHandlers() {
     centerMapOnCountry(state.myCountry);
     // Atualiza a sidetools para mostrar os dados do país do jogador
     updateSidetools();
+  });
+  
+
+  // Eventos de navios
+  socket.on('shipsData', (data) => {
+    console.log('Dados de navios recebidos:', data);
+    updateShips(data);
+  });
+
+  socket.on('shipUpdated', (shipInfo) => {
+    console.log('Navio atualizado:', shipInfo);
+    addShip(shipInfo);
   });
 
   // Eventos de conexão
