@@ -53,11 +53,11 @@ async function initializeMap(username) {
     // Adiciona efeito de névoa para melhor visualização dos oceanos
     state.map.on('style.load', () => {
       state.map.setFog({
-        'color': 'rgb(217, 230, 255)',
-        'high-color': 'rgb(243, 246, 255)',
+        'color': 'rgba(217, 230, 255, 0.2)',
+        'high-color': 'rgba(37, 39, 43, 0.6)',
         'horizon-blend': 0.1,
-        'space-color': 'rgb(36, 42, 80)',
-        'star-intensity': 0.4
+        'space-color': 'rgb(21, 23, 25)',
+        'star-intensity': 0.2
       });
     });
 

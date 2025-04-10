@@ -2,12 +2,11 @@
 
 import { state, shipState } from './state.js';
 import { socket } from './socket-handler.js';
-import { loadCountriesData } from './api.js';
 import { updateShipsList, updateEnemyShipsList, focusOnShip } from './ui.js';
 
 // Configurações para os navios
 const SHIP_CONFIG = {
-  actionRadius: 500, // Raio de ação em km
+  actionRadius: 200, // Raio de ação em km
   shipLimit: 3,      // Número máximo de navios por jogador
   // Pontos conhecidos no oceano para colocar navios em caso de emergência
   oceanPoints: [
