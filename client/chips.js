@@ -140,8 +140,74 @@ function addShipEventListeners() {
   let draggedShipId = null;
   let updateRequested = false;
   
+  // ----------- SUPORTE PARA MOUSE -----------
   // Event listener para quando o usuário clica em um navio
   state.map.on('mousedown', 'ships-layer', (e) => {
+    handlePointerDown(e);
+  });
+  
+  // Event listener para mover o navio quando arrastado
+  state.map.on('mousemove', (e) => {
+    if (!isDragging) return;
+    
+    handlePointerMove(e);
+  });
+  
+  // Event listener para quando o usuário solta o navio
+  state.map.on('mouseup', (e) => {
+    if (!isDragging) return;
+    
+    handlePointerUp(e);
+  });
+  
+  // Event listener para quando o cursor sai do mapa
+  state.map.on('mouseleave', () => {
+    if (!isDragging) return;
+    
+    isDragging = false;
+    draggedShipId = null;
+    state.map.getCanvas().style.cursor = '';
+  });
+  
+  // ----------- SUPORTE PARA TOUCHSCREEN -----------
+  // Event listener para toque em um navio
+  state.map.on('touchstart', 'ships-layer', (e) => {
+    if (e.points.length !== 1) return; // Ignora multi-touch
+    
+    handlePointerDown(e);
+  });
+  
+  // Event listener para mover o dedo com o navio
+  state.map.on('touchmove', (e) => {
+    if (!isDragging || e.points.length !== 1) return;
+    
+    // Previne o scroll da página enquanto arrasta
+    e.preventDefault();
+    
+    handlePointerMove(e);
+  });
+  
+  // Event listener para quando o usuário levanta o dedo
+  state.map.on('touchend', (e) => {
+    if (!isDragging) return;
+    
+    handlePointerUp(e);
+  });
+  
+  // Event listener para quando o toque é cancelado
+  state.map.on('touchcancel', () => {
+    if (!isDragging) return;
+    
+    isDragging = false;
+    draggedShipId = null;
+  });
+  
+  // ----------- FUNÇÕES COMPARTILHADAS -----------
+  // Função para lidar com o início do arrasto (mousedown ou touchstart)
+  function handlePointerDown(e) {
+    // Previne comportamento padrão
+    e.preventDefault();
+    
     // Verifica se o navio é do usuário atual
     const features = state.map.queryRenderedFeatures(e.point, { layers: ['ships-layer'] });
     if (!features.length) return;
@@ -154,7 +220,6 @@ function addShipEventListeners() {
       return;
     }
     
-    e.preventDefault();
     isDragging = true;
     draggedShipId = features[0].properties.id;
     state.map.getCanvas().style.cursor = 'grabbing';
@@ -166,13 +231,22 @@ function addShipEventListeners() {
         item.classList.add('active');
       }
     });
-  });
+  }
   
-  // Event listener para mover o navio quando arrastado
-  state.map.on('mousemove', (e) => {
-    if (!isDragging) return;
+  // Função para lidar com o movimento durante o arrasto (mousemove ou touchmove)
+  function handlePointerMove(e) {
+    // Para touchmove, precisamos acessar as coordenadas do toque
+    let lngLat;
     
-    const newCoordinates = [e.lngLat.lng, e.lngLat.lat];
+    if (e.type === 'touchmove') {
+      // Obter coordenadas do toque para eventos touch
+      lngLat = state.map.unproject(e.point);
+    } else {
+      // Usar e.lngLat para eventos de mouse
+      lngLat = e.lngLat;
+    }
+    
+    const newCoordinates = [lngLat.lng, lngLat.lat];
     
     if (!updateRequested) {
       updateRequested = true;
@@ -181,28 +255,34 @@ function addShipEventListeners() {
         updateRequested = false;
       });
     }
-  });
+  }
   
-  // Event listener para quando o usuário solta o navio
-  state.map.on('mouseup', (e) => {
-    if (!isDragging) return;
+  // Função para lidar com o fim do arrasto (mouseup ou touchend)
+  function handlePointerUp(e) {
+    // Para touchend, precisamos usar a última posição conhecida
+    let coordinates;
     
-    const coordinates = [e.lngLat.lng, e.lngLat.lat];
+    if (e.type === 'touchend') {
+      // Se for touchend, usamos a última posição conhecida do navio
+      const shipIndex = shipState.features.findIndex(f => f.properties.id === draggedShipId);
+      if (shipIndex !== -1) {
+        coordinates = shipState.features[shipIndex].geometry.coordinates;
+      } else {
+        // Fallback se não encontrar o navio no estado
+        coordinates = state.map.unproject(e.point);
+        coordinates = [coordinates.lng, coordinates.lat];
+      }
+    } else {
+      // Para mouse, usamos a posição atual
+      coordinates = [e.lngLat.lng, e.lngLat.lat];
+    }
+    
     handleShipPositioning(draggedShipId, coordinates);
     
     isDragging = false;
     draggedShipId = null;
     state.map.getCanvas().style.cursor = '';
-  });
-  
-  // Event listener para quando o cursor sai do mapa
-  state.map.on('mouseleave', () => {
-    if (!isDragging) return;
-    
-    isDragging = false;
-    draggedShipId = null;
-    state.map.getCanvas().style.cursor = '';
-  });
+  }
 }
 
 // Atualiza a posição de um navio

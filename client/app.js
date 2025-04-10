@@ -78,7 +78,7 @@ function initApp() {
     
     
     // Garante que a aba de economia esteja aberta por padrão
-    setTimeout(() => {
+    /*setTimeout(() => {
       const sidetools = document.getElementById('sidetools');
       sidetools.classList.add('active');
       
@@ -93,7 +93,7 @@ function initApp() {
       // Ativa o conteúdo da economia na sidetools
       document.querySelectorAll('#sidetools .tab-content').forEach(content => content.classList.remove('active'));
       if (economyContent) economyContent.classList.add('active');
-    }, 1000);
+    }, 1000);*/
   });
   
   // Adiciona event listeners para os botões de ações econômicas

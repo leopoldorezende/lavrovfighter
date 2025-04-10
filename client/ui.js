@@ -181,8 +181,11 @@ function initUIHandlers() {
 
     // Se o clique ocorrer fora de todos os elementos, fecha ambos
     if (!clickedInSidebar && !clickedInSidetools && !clickedInHamburger && !clickedInToolsBtn) {
-      sidebar.classList.remove('active');
-      sidetools.classList.remove('active');
+      if(sidebar.classList.contains('active') || sidetools.classList.contains('active')) {
+        e.stopPropagation();
+        sidebar.classList.remove('active');
+        sidetools.classList.remove('active');
+      }
     }
   }, true);  // Usando o modo de captura
 
